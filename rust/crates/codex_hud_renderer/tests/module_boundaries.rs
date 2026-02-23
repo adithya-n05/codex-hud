@@ -3,6 +3,7 @@ use codex_hud_renderer::bar::metric_bar;
 use codex_hud_renderer::bottom_line::render_bottom_line;
 use codex_hud_renderer::wrap::wrap_text;
 use codex_hud_renderer::color::severity_word_for_percent;
+use codex_hud_renderer::format::format_usage_text;
 
 #[test]
 fn top_line_renderer_is_exposed_from_top_line_module() {
@@ -44,4 +45,10 @@ fn color_module_exposes_textual_severity_helper() {
     assert_eq!(severity_word_for_percent(69), "normal");
     assert_eq!(severity_word_for_percent(70), "warn");
     assert_eq!(severity_word_for_percent(85), "critical");
+}
+
+#[test]
+fn format_module_exposes_usage_text_formatter() {
+    let out = format_usage_text(Some(41), Some(12), Some(38));
+    assert_eq!(out, "CTX 41% | 5H 12% | 7D 38%");
 }
