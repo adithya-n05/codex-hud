@@ -74,3 +74,14 @@ fn detect_api_key_from_env_key_name() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "API key");
 }
+
+#[test]
+fn detect_entra_token_for_azure_openai() {
+    let input = ClassifierInput {
+        base_url: Some("https://my-resource.openai.azure.com/openai/v1".to_string()),
+        has_bearer_header: true,
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "Entra token");
+}
