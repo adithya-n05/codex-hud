@@ -22,6 +22,6 @@ pub fn initial_screen(is_first_run: bool) -> &'static str {
     if is_first_run {
         "preset_wizard"
     } else {
-        "preset_wizard"
+        "main_config"
     }
 }
