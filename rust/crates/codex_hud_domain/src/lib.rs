@@ -15,12 +15,24 @@ pub enum Preset {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudConfig {
     pub preset: Preset,
+    pub native: NativeToggles,
+    pub derived: DerivedToggles,
+    pub visual: VisualOptions,
+    pub privacy: PrivacyOptions,
+    pub format: FormatOptions,
+    pub tool_counter: ToolCounterOptions,
 }
 
 impl Default for HudConfig {
     fn default() -> Self {
         Self {
             preset: Preset::Essential,
+            native: NativeToggles::default(),
+            derived: DerivedToggles::default(),
+            visual: VisualOptions::default(),
+            privacy: PrivacyOptions::default(),
+            format: FormatOptions::default(),
+            tool_counter: ToolCounterOptions::default(),
         }
     }
 }
