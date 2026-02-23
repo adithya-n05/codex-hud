@@ -58,6 +58,7 @@ where
             })
         }
         "cleanup" => Err("cleanup command is deferred in v1".to_string()),
+        "config-repair" => Err("config-repair helper is deferred in v1".to_string()),
         _ => Err("unknown command".to_string()),
     }
 }
