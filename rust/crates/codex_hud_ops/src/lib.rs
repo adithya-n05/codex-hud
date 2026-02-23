@@ -4,6 +4,7 @@ pub mod shim;
 pub use shim::write_codex_shim;
 pub mod shell_rc;
 pub use shell_rc::ensure_rc_block;
+pub use shell_rc::remove_rc_block;
 
 pub fn ops_ready() -> bool {
     true
