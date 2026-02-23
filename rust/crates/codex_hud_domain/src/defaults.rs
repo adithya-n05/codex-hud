@@ -18,3 +18,18 @@ impl Default for VisualOptions {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrivacyOptions {
+    pub redact_auth_identity: bool,
+    pub persist_redaction_toggle: bool,
+}
+
+impl Default for PrivacyOptions {
+    fn default() -> Self {
+        Self {
+            redact_auth_identity: false,
+            persist_redaction_toggle: true,
+        }
+    }
+}
