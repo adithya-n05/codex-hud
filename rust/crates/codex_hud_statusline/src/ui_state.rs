@@ -29,5 +29,8 @@ impl ConfigUiState {
         if key == Key::Down && self.selected_index + 1 < self.row_count {
             self.selected_index += 1;
         }
+        if key == Key::Up && self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
     }
 }
