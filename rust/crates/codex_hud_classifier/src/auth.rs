@@ -4,6 +4,8 @@ pub fn normalize_auth_override(value: &str) -> String {
         "OpenAI auth".to_string()
     } else if normalized == "no-auth" || normalized == "no auth" {
         "No auth".to_string()
+    } else if normalized == "chatgpt" {
+        "ChatGPT".to_string()
     } else {
         value.trim().to_string()
     }

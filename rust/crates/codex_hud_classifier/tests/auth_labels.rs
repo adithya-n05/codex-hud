@@ -53,3 +53,13 @@ fn detect_no_auth_label() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "No auth");
 }
+
+#[test]
+fn detect_chatgpt_auth() {
+    let input = ClassifierInput {
+        explicit_auth_override: Some("chatgpt".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "ChatGPT");
+}
