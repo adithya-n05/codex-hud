@@ -1,0 +1,5 @@
+snapshot_tests = true
+smoke_macos = true
+smoke_ubuntu = true
+smoke_windows = true
+release_source = "git_tag"
