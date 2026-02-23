@@ -34,3 +34,14 @@ enabled = true
     let err = parse_hud_config(src).unwrap_err();
     assert!(err.contains("project-level codex_hud config is not supported"));
 }
+
+#[test]
+fn parse_rejects_negative_threshold() {
+    let src = r#"
+[tui.codex_hud.visual]
+warn_percent = -1
+critical_percent = 85
+"#;
+    let err = parse_hud_config(src).unwrap_err();
+    assert!(err.contains("threshold must be between 0 and 100"));
+}

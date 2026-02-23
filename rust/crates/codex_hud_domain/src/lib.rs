@@ -1,4 +1,5 @@
 pub mod defaults;
+pub mod validate;
 pub use defaults::VisualOptions;
 pub use defaults::PrivacyOptions;
 pub use defaults::FormatOptions;
@@ -148,9 +149,7 @@ pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
         .and_then(toml::Value::as_integer)
         .unwrap_or(85);
 
-    if !(0..=100).contains(&warn) || !(0..=100).contains(&critical) {
-        return Err("threshold must be between 0 and 100".to_string());
-    }
+    validate::validate_threshold_range(warn, critical)?;
 
     if warn > critical {
         return Err("warn_percent must be <= critical_percent".to_string());
