@@ -10,6 +10,15 @@ pub struct StatusSnapshot {
     pub stock_codex_path: Option<String>,
 }
 
+fn redact_secret_like(value: &str) -> String {
+    let lower = value.to_ascii_lowercase();
+    if lower.contains("sk-") || lower.contains("token") || lower.contains("bearer") {
+        "[redacted]".to_string()
+    } else {
+        value.to_string()
+    }
+}
+
 pub fn render_status_summary(s: &StatusSnapshot) -> String {
     let installed = if s.installed { "yes" } else { "no" };
     let shim = if s.shim_present { "present" } else { "missing" };
@@ -32,7 +41,10 @@ pub fn render_status_details(s: &StatusSnapshot) -> String {
         s.rc_block_present,
         s.compatible,
         s.codex_version.clone().unwrap_or_else(|| "unknown".to_string()),
-        s.codex_sha256.clone().unwrap_or_else(|| "unknown".to_string()),
+        s.codex_sha256
+            .as_deref()
+            .map(redact_secret_like)
+            .unwrap_or_else(|| "unknown".to_string()),
         s.managed_root.clone().unwrap_or_else(|| "unknown".to_string()),
         s.stock_codex_path.clone().unwrap_or_else(|| "unknown".to_string()),
         unsupported_notice,
