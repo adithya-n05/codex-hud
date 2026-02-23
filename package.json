@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "codex-hud": "bin/codex-hud.js"
+  },
   "files": [
     "bin/",
     "scripts/",
     "rust/",
-    "package.json"
+    "README.md",
+    "LICENSE"
   ],
-  "bin": {
-    "codex-hud": "bin/codex-hud.js"
-  },
   "scripts": {
     "postinstall": "node scripts/postinstall.mjs",
     "test": "node --test node-tests/*.test.mjs"
