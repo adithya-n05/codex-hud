@@ -13,6 +13,8 @@ pub enum Key {
 pub struct ConfigUiState {
     pub selected_index: usize,
     pub row_count: usize,
+    pub current_config: String,
+    pub last_live_apply_payload: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +30,8 @@ impl Default for ConfigUiState {
         Self {
             selected_index: 0,
             row_count: 10,
+            current_config: String::new(),
+            last_live_apply_payload: None,
         }
     }
 }
@@ -53,7 +57,17 @@ impl ConfigUiState {
         ConfigUiEvent::None
     }
 
-    pub fn on_toggle_changed(&mut self, _key: &str, _value: bool) -> ConfigUiEvent {
+    pub fn on_toggle_changed(&mut self, key: &str, value: bool) -> ConfigUiEvent {
+        let normalized_key = key.replace('-', "_");
+        if normalized_key == "native.model_with_reasoning" {
+            let bool_text = if value { "true" } else { "false" };
+            self.current_config = self
+                .current_config
+                .replace("model_with_reasoning = true", "model_with_reasoning = __VALUE__")
+                .replace("model_with_reasoning = false", "model_with_reasoning = __VALUE__")
+                .replace("__VALUE__", bool_text);
+            self.last_live_apply_payload = Some(self.current_config.clone());
+        }
         ConfigUiEvent::LiveApply
     }
 }
