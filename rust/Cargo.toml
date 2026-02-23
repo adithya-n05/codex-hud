@@ -1,6 +1,10 @@
 [workspace]
 members = [
   "crates/codex_hud_domain",
-  "crates/codex_hud_classifier"
+  "crates/codex_hud_classifier",
+  "crates/codex_hud_renderer",
+  "crates/codex_hud_statusline",
+  "crates/codex_hud_ops",
+  "crates/codex_hud_cli"
 ]
 resolver = "2"
