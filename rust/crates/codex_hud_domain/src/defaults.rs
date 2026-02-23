@@ -33,3 +33,20 @@ impl Default for PrivacyOptions {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormatOptions {
+    pub context_mode: String,
+    pub usage_mode: String,
+    pub path_depth_mode: String,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self {
+            context_mode: "percent".to_string(),
+            usage_mode: "bars".to_string(),
+            path_depth_mode: "compact".to_string(),
+        }
+    }
+}

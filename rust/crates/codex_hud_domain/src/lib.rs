@@ -1,6 +1,7 @@
 pub mod defaults;
 pub use defaults::VisualOptions;
 pub use defaults::PrivacyOptions;
+pub use defaults::FormatOptions;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Preset {
