@@ -23,3 +23,16 @@ pub fn run_uninstall_with_rc(home: &Path, rc_path: &Path) -> Result<(), String> 
     }
     run_uninstall(home)
 }
+
+pub fn reverse_patch_if_exact_state(
+    target_binary: &Path,
+    expected_patched: &str,
+    original_stock: &str,
+) -> Result<bool, String> {
+    let current = std::fs::read_to_string(target_binary).map_err(|e| e.to_string())?;
+    if current != expected_patched {
+        return Ok(false);
+    }
+    std::fs::write(target_binary, original_stock).map_err(|e| e.to_string())?;
+    Ok(true)
+}
