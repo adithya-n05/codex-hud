@@ -45,6 +45,9 @@ impl ConfigUiState {
         if key == Key::Esc {
             return ConfigUiEvent::CloseWithoutPrompt;
         }
+        if key == Key::Enter && self.selected_index == self.row_count.saturating_sub(1) {
+            return ConfigUiEvent::SaveAndClose;
+        }
         self.on_key(key);
         ConfigUiEvent::None
     }
