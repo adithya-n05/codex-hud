@@ -16,6 +16,7 @@ pub struct RenderInput {
     pub context_percent: Option<u8>,
     pub five_hour_percent: Option<u8>,
     pub weekly_percent: Option<u8>,
+    pub duration_seconds: Option<u64>,
     pub width: Option<usize>,
     pub colorblind_mode: bool,
 }
@@ -108,6 +109,9 @@ fn bottom_line(input: &RenderInput) -> String {
     }
     if let Some(v) = input.weekly_percent {
         parts.push(format!("7D {v}% [{}]", metric_bar(v, 20)));
+    }
+    if let Some(v) = input.duration_seconds {
+        parts.push(format!("dur {v}s"));
     }
     parts.join(" | ")
 }
