@@ -17,3 +17,11 @@ pub fn parse_statusline_invocation<const N: usize>(
         Ok(StatuslineAction::OpenInteractiveUi)
     }
 }
+
+pub fn initial_screen(is_first_run: bool) -> &'static str {
+    if is_first_run {
+        "preset_wizard"
+    } else {
+        "preset_wizard"
+    }
+}
