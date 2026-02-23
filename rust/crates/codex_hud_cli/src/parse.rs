@@ -17,7 +17,7 @@ where
     match collected.get(1).map(String::as_str) {
         Some("install") => Ok(Command::Install),
         Some("uninstall") => Ok(Command::Uninstall),
-        Some(_) => Err("unsupported command".to_string()),
+        Some(_) => Err("unknown command".to_string()),
         None => Err("missing command".to_string()),
     }
 }

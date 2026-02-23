@@ -11,3 +11,9 @@ fn parse_uninstall_command() {
     let cmd = parse_args(["codex-hud", "uninstall"]).unwrap();
     assert_eq!(cmd, Command::Uninstall);
 }
+
+#[test]
+fn parse_unknown_command_fails() {
+    let err = parse_args(["codex-hud", "unknown"]).unwrap_err();
+    assert!(err.contains("unknown command"));
+}
