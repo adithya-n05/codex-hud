@@ -1,6 +1,7 @@
 pub mod defaults;
 pub mod edit_session;
 pub mod parse;
+pub mod save;
 pub mod validate;
 pub use defaults::VisualOptions;
 pub use defaults::PrivacyOptions;
