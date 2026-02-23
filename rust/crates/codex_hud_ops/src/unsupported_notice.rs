@@ -28,3 +28,7 @@ pub fn build_unsupported_notice_message(key: &str) -> String {
         "codex-hud is not yet compatible with {key}. Run `codex-hud status details` to check compatibility support."
     )
 }
+
+pub fn manual_unsupported_notice_reshow_available() -> bool {
+    false
+}

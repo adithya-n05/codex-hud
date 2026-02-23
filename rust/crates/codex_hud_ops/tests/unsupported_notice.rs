@@ -1,5 +1,6 @@
 use codex_hud_ops::unsupported_notice::should_show_unsupported_notice;
 use codex_hud_ops::unsupported_notice::build_unsupported_notice_message;
+use codex_hud_ops::unsupported_notice::manual_unsupported_notice_reshow_available;
 use std::path::PathBuf;
 
 #[test]
@@ -16,4 +17,9 @@ fn unsupported_notice_only_once_per_version() {
 fn unsupported_notice_includes_support_check_action() {
     let msg = build_unsupported_notice_message("0.95.0+zzz");
     assert!(msg.contains("Run `codex-hud status details` to check compatibility support"));
+}
+
+#[test]
+fn unsupported_notice_has_no_manual_reshow_control() {
+    assert!(!manual_unsupported_notice_reshow_available());
 }
