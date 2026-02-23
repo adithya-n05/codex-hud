@@ -121,6 +121,32 @@ impl Default for DerivedToggles {
     }
 }
 
+pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
+    let value = src.parse::<toml::Value>().map_err(|e| e.to_string())?;
+
+    let warn = value
+        .get("tui")
+        .and_then(|v| v.get("codex_hud"))
+        .and_then(|v| v.get("visual"))
+        .and_then(|v| v.get("warn_percent"))
+        .and_then(toml::Value::as_integer)
+        .unwrap_or(70);
+
+    let critical = value
+        .get("tui")
+        .and_then(|v| v.get("codex_hud"))
+        .and_then(|v| v.get("visual"))
+        .and_then(|v| v.get("critical_percent"))
+        .and_then(toml::Value::as_integer)
+        .unwrap_or(85);
+
+    if warn > critical {
+        return Err("warn_percent must be <= critical_percent".to_string());
+    }
+
+    Ok(HudConfig::default())
+}
+
 pub fn domain_ready() -> bool {
     true
 }
