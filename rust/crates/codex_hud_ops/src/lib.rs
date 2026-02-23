@@ -12,6 +12,7 @@ pub mod uninstall;
 pub use uninstall::run_uninstall_with_rc;
 pub use uninstall::reverse_patch_if_exact_state;
 pub mod unsupported_notice;
+pub mod status;
 
 pub fn ops_ready() -> bool {
     true
