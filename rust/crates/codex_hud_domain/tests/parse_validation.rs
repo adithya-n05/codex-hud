@@ -11,3 +11,15 @@ critical_percent = 80
     let err = parse_hud_config(src).unwrap_err();
     assert!(err.contains("warn_percent must be <= critical_percent"));
 }
+
+#[test]
+fn parse_rejects_threshold_out_of_range() {
+    let src = r#"
+[tui.codex_hud.visual]
+warn_percent = 200
+critical_percent = 250
+"#;
+
+    let err = parse_hud_config(src).unwrap_err();
+    assert!(err.contains("threshold must be between 0 and 100"));
+}

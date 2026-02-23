@@ -140,6 +140,10 @@ pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
         .and_then(toml::Value::as_integer)
         .unwrap_or(85);
 
+    if !(0..=100).contains(&warn) || !(0..=100).contains(&critical) {
+        return Err("threshold must be between 0 and 100".to_string());
+    }
+
     if warn > critical {
         return Err("warn_percent must be <= critical_percent".to_string());
     }
