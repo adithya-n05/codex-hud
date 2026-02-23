@@ -3,10 +3,12 @@ use codex_hud_renderer::bottom_line::build_bottom_line;
 
 #[test]
 fn bottom_line_renders_three_primary_bars() {
-    let mut input = RenderInput::default();
-    input.context_percent = Some(41);
-    input.five_hour_percent = Some(12);
-    input.weekly_percent = Some(38);
+    let input = RenderInput {
+        context_percent: Some(41),
+        five_hour_percent: Some(12),
+        weekly_percent: Some(38),
+        ..RenderInput::default()
+    };
 
     let out = render_hud(&input);
     assert!(out.logical_lines[1].contains("CTX 41%"));

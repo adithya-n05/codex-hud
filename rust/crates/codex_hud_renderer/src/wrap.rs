@@ -11,11 +11,9 @@ pub fn wrap_line_unicode_safe(line: &str, width: usize) -> Vec<String> {
 
     for grapheme in UnicodeSegmentation::graphemes(line, true) {
         let candidate = format!("{current}{grapheme}");
-        if UnicodeWidthStr::width(candidate.as_str()) > width {
-            if !current.is_empty() {
-                out.push(current.clone());
-                current.clear();
-            }
+        if UnicodeWidthStr::width(candidate.as_str()) > width && !current.is_empty() {
+            out.push(current.clone());
+            current.clear();
         }
         current.push_str(grapheme);
     }
