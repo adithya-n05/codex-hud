@@ -21,3 +21,9 @@ pub fn atomic_write_with_backup(path: &Path, content: &str, simulate_failure: bo
     std::fs::rename(&temp, path).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+pub fn restore_from_backup(path: &Path) -> Result<(), String> {
+    let backup = path.with_extension("toml.bak");
+    std::fs::copy(&backup, path).map_err(|e| e.to_string())?;
+    Ok(())
+}
