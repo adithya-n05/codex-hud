@@ -9,3 +9,13 @@ fn duration_metric_renders_when_present() {
     let out = render_hud(&input);
     assert!(out.logical_lines[1].contains("dur 125s"));
 }
+
+#[test]
+fn speed_metric_renders_when_present() {
+    let input = RenderInput {
+        tokens_per_second: Some(42),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out.logical_lines[1].contains("spd 42t/s"));
+}

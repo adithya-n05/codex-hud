@@ -17,6 +17,7 @@ pub struct RenderInput {
     pub five_hour_percent: Option<u8>,
     pub weekly_percent: Option<u8>,
     pub duration_seconds: Option<u64>,
+    pub tokens_per_second: Option<u64>,
     pub width: Option<usize>,
     pub colorblind_mode: bool,
 }
@@ -112,6 +113,9 @@ fn bottom_line(input: &RenderInput) -> String {
     }
     if let Some(v) = input.duration_seconds {
         parts.push(format!("dur {v}s"));
+    }
+    if let Some(v) = input.tokens_per_second {
+        parts.push(format!("spd {v}t/s"));
     }
     parts.join(" | ")
 }
