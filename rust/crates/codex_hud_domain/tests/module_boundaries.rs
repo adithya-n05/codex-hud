@@ -28,3 +28,11 @@ model_with_reasoning = true
     assert!(!cfg.native.model_name);
     assert!(cfg.native.model_with_reasoning);
 }
+
+#[test]
+fn preset_behavior_is_owned_by_preset_module() {
+    let mut cfg = HudConfig::default();
+    apply_preset(&mut cfg, Preset::Full);
+    assert!(cfg.derived.tool_counter);
+    assert!(cfg.derived.failure_count);
+}

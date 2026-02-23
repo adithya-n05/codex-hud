@@ -135,27 +135,7 @@ pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
 }
 
 pub fn apply_preset(cfg: &mut HudConfig, preset: Preset) {
-    cfg.preset = preset;
-    match preset {
-        Preset::Minimal => {
-            cfg.derived.provider_chip = false;
-            cfg.derived.five_hour_bar = false;
-            cfg.derived.weekly_bar = false;
-        }
-        Preset::Essential => {
-            cfg.derived.provider_chip = true;
-            cfg.derived.five_hour_bar = true;
-            cfg.derived.weekly_bar = true;
-        }
-        Preset::Full => {
-            cfg.derived.provider_chip = true;
-            cfg.derived.five_hour_bar = true;
-            cfg.derived.weekly_bar = true;
-            cfg.derived.tool_counter = true;
-            cfg.derived.failure_count = true;
-            cfg.derived.activity_summary = true;
-        }
-    }
+    preset::apply_preset(cfg, preset)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
