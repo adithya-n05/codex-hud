@@ -41,6 +41,10 @@ pub fn renderer_ready() -> bool {
     true
 }
 
+pub fn supports_third_activity_line_mode() -> bool {
+    false
+}
+
 fn top_line_with_width(input: &RenderInput) -> String {
     let mut fields = vec![];
     if let Some(v) = input.repo.as_ref() {
