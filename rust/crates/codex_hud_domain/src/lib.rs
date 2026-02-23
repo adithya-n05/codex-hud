@@ -1,6 +1,7 @@
 pub mod defaults;
 pub mod edit_session;
 pub mod parse;
+pub mod runtime_policy;
 pub mod save;
 pub mod validate;
 pub use defaults::VisualOptions;
@@ -9,6 +10,7 @@ pub use defaults::FormatOptions;
 pub use defaults::ToolCounterOptions;
 pub use defaults::{count_tool_events, ToolCounterEvent};
 pub use edit_session::EditSession;
+pub use runtime_policy::RuntimePolicy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Preset {
