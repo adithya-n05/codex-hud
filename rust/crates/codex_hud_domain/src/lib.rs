@@ -124,6 +124,14 @@ impl Default for DerivedToggles {
 pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
     let value = src.parse::<toml::Value>().map_err(|e| e.to_string())?;
 
+    if value
+        .get("project")
+        .and_then(|v| v.get("codex_hud"))
+        .is_some()
+    {
+        return Err("project-level codex_hud config is not supported".to_string());
+    }
+
     let warn = value
         .get("tui")
         .and_then(|v| v.get("codex_hud"))

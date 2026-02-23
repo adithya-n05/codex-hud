@@ -23,3 +23,14 @@ critical_percent = 250
     let err = parse_hud_config(src).unwrap_err();
     assert!(err.contains("threshold must be between 0 and 100"));
 }
+
+#[test]
+fn parse_rejects_project_level_block() {
+    let src = r#"
+[project.codex_hud]
+enabled = true
+"#;
+
+    let err = parse_hud_config(src).unwrap_err();
+    assert!(err.contains("project-level codex_hud config is not supported"));
+}
