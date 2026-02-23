@@ -1,4 +1,5 @@
 use codex_hud_renderer::{render_hud, RenderInput};
+use codex_hud_renderer::wrap::wrap_line_unicode_safe;
 
 #[test]
 fn narrow_width_wraps_but_keeps_two_logical_lines() {
@@ -20,4 +21,10 @@ fn narrow_width_wraps_but_keeps_two_logical_lines() {
     let out = render_hud(&input);
     assert_eq!(out.logical_lines.len(), 2);
     assert!(out.wrapped_lines.len() > 2);
+}
+
+#[test]
+fn width_zero_does_not_panic() {
+    let wrapped = wrap_line_unicode_safe("abc", 0);
+    assert_eq!(wrapped, vec!["abc".to_string()]);
 }

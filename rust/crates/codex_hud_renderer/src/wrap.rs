@@ -2,6 +2,10 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 pub fn wrap_line_unicode_safe(line: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![line.to_string()];
+    }
+
     let mut out: Vec<String> = Vec::new();
     let mut current = String::new();
 
