@@ -73,3 +73,32 @@ impl Default for ToolCounterOptions {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolCounterEvent {
+    CoreCall,
+    McpCall,
+    WebCall,
+    PatchApply,
+    Failure,
+    Other,
+}
+
+pub fn count_tool_events(events: &[ToolCounterEvent], options: &ToolCounterOptions) -> u64 {
+    if options.scope != "session_total" {
+        return 0;
+    }
+
+    let mut total = 0_u64;
+    for event in events {
+        match event {
+            ToolCounterEvent::CoreCall if options.include_core => total += 1,
+            ToolCounterEvent::McpCall if options.include_mcp => total += 1,
+            ToolCounterEvent::WebCall if options.include_web => total += 1,
+            ToolCounterEvent::PatchApply if options.include_patch => total += 1,
+            ToolCounterEvent::Failure if options.include_failures => total += 1,
+            _ => {}
+        }
+    }
+    total
+}

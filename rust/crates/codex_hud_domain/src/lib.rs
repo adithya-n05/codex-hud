@@ -3,6 +3,7 @@ pub use defaults::VisualOptions;
 pub use defaults::PrivacyOptions;
 pub use defaults::FormatOptions;
 pub use defaults::ToolCounterOptions;
+pub use defaults::{count_tool_events, ToolCounterEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Preset {
