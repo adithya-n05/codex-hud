@@ -39,6 +39,19 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
             return "GCP Vertex".to_string();
         }
     }
+    if input
+        .provider_id
+        .as_deref()
+        .map(|v| v.eq_ignore_ascii_case("openai"))
+        .unwrap_or(false)
+        || input
+            .provider_name
+            .as_deref()
+            .map(|v| v.eq_ignore_ascii_case("openai"))
+            .unwrap_or(false)
+    {
+        return "OpenAI".to_string();
+    }
     "Custom".to_string()
 }
 

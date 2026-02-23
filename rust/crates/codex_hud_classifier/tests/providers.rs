@@ -32,3 +32,14 @@ fn detect_vertex_from_openapi_endpoint() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "GCP Vertex");
 }
+
+#[test]
+fn detect_openai_from_provider_id_or_name() {
+    let input = ClassifierInput {
+        provider_id: Some("openai".to_string()),
+        provider_name: Some("OpenAI".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "OpenAI");
+}
