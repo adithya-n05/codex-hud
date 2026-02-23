@@ -55,6 +55,9 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
     {
         return "OpenAI".to_string();
     }
+    if let Some(v) = provider::detect_provider_from_endpoint(input.base_url.as_deref()) {
+        return v;
+    }
     if let Some(v) = provider::detect_provider_from_model_name(input.model_name.as_deref()) {
         return v;
     }

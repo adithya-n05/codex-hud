@@ -1,3 +1,11 @@
+pub fn detect_provider_from_endpoint(base_url: Option<&str>) -> Option<String> {
+    let lower = base_url?.to_ascii_lowercase();
+    if lower.contains("bedrock-mantle") && lower.contains(".api.aws") {
+        return Some("AWS Bedrock".to_string());
+    }
+    None
+}
+
 pub fn detect_provider_from_model_name(model_name: Option<&str>) -> Option<String> {
     let name = model_name?.to_ascii_lowercase();
     if name.contains("bedrock") {

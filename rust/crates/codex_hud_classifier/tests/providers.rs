@@ -53,3 +53,13 @@ fn detect_provider_from_model_name_hint() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "AWS Bedrock");
 }
+
+#[test]
+fn detect_bedrock_from_mantle_endpoint() {
+    let input = ClassifierInput {
+        base_url: Some("https://bedrock-mantle.us-west-2.api.aws/openai/v1".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "AWS Bedrock");
+}
