@@ -22,3 +22,9 @@ pub fn should_show_unsupported_notice(key: &str, state_path: &Path) -> Result<bo
     std::fs::write(state_path, next).map_err(|e| e.to_string())?;
     Ok(true)
 }
+
+pub fn build_unsupported_notice_message(key: &str) -> String {
+    format!(
+        "codex-hud is not yet compatible with {key}. Run `codex-hud status details` to check compatibility support."
+    )
+}

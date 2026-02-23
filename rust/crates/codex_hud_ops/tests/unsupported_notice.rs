@@ -1,4 +1,5 @@
 use codex_hud_ops::unsupported_notice::should_show_unsupported_notice;
+use codex_hud_ops::unsupported_notice::build_unsupported_notice_message;
 use std::path::PathBuf;
 
 #[test]
@@ -9,4 +10,10 @@ fn unsupported_notice_only_once_per_version() {
     assert!(should_show_unsupported_notice("0.95.0+zzz", &state_path).unwrap());
     assert!(!should_show_unsupported_notice("0.95.0+zzz", &state_path).unwrap());
     let _ = std::fs::remove_file(&state_path);
+}
+
+#[test]
+fn unsupported_notice_includes_support_check_action() {
+    let msg = build_unsupported_notice_message("0.95.0+zzz");
+    assert!(msg.contains("Run `codex-hud status details` to check compatibility support"));
 }
