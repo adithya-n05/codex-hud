@@ -1,5 +1,6 @@
 use codex_hud_renderer::{render_hud, RenderInput};
 use codex_hud_renderer::wrap::wrap_line_unicode_safe;
+use unicode_width::UnicodeWidthStr;
 
 #[test]
 fn narrow_width_wraps_but_keeps_two_logical_lines() {
@@ -27,4 +28,18 @@ fn narrow_width_wraps_but_keeps_two_logical_lines() {
 fn width_zero_does_not_panic() {
     let wrapped = wrap_line_unicode_safe("abc", 0);
     assert_eq!(wrapped, vec!["abc".to_string()]);
+}
+
+#[test]
+fn render_hud_wraps_using_unicode_display_width() {
+    let input = RenderInput {
+        repo: Some("ab🤖cd".to_string()),
+        width: Some(4),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out
+        .wrapped_lines
+        .iter()
+        .all(|line| UnicodeWidthStr::width(line.as_str()) <= 4));
 }

@@ -109,34 +109,14 @@ fn bottom_line(input: &RenderInput) -> String {
     parts.join(" | ")
 }
 
-fn wrap_line(line: &str, width: usize) -> Vec<String> {
-    if width == 0 {
-        return vec![line.to_string()];
-    }
-
-    let chars: Vec<char> = line.chars().collect();
-    if chars.is_empty() {
-        return vec![String::new()];
-    }
-
-    let mut out: Vec<String> = Vec::new();
-    let mut index = 0;
-    while index < chars.len() {
-        let end = usize::min(index + width, chars.len());
-        out.push(chars[index..end].iter().collect());
-        index = end;
-    }
-    out
-}
-
 pub fn render_hud(input: &RenderInput) -> RenderOutput {
     let line1 = top_line_with_width(input);
     let line2 = bottom_line(input);
     let logical_lines = vec![line1, line2];
     let wrapped_lines = if let Some(width) = input.width {
         let mut out = Vec::new();
-        out.extend(wrap_line(&logical_lines[0], width));
-        out.extend(wrap_line(&logical_lines[1], width));
+        out.extend(wrap::wrap_line_unicode_safe(&logical_lines[0], width));
+        out.extend(wrap::wrap_line_unicode_safe(&logical_lines[1], width));
         out
     } else {
         logical_lines.clone()
