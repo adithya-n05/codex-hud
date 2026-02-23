@@ -1,5 +1,6 @@
 pub mod bottom_line;
 pub mod color;
+pub mod format;
 pub mod wrap;
 pub use color::format_percent_label;
 
