@@ -30,3 +30,7 @@ pub fn wrap_line_unicode_safe(line: &str, width: usize) -> Vec<String> {
         out
     }
 }
+
+pub fn wrap_text(input: &str, width: usize) -> Vec<String> {
+    wrap_line_unicode_safe(input, width)
+}

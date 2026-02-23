@@ -1,6 +1,7 @@
 use codex_hud_renderer::{top_line::render_top_line, RenderInput};
 use codex_hud_renderer::bar::metric_bar;
 use codex_hud_renderer::bottom_line::render_bottom_line;
+use codex_hud_renderer::wrap::wrap_text;
 
 #[test]
 fn top_line_renderer_is_exposed_from_top_line_module() {
@@ -29,4 +30,10 @@ fn bottom_line_renderer_is_exposed_from_bottom_line_module() {
     };
     let line = render_bottom_line(&input);
     assert!(line.contains("CTX 41%"));
+}
+
+#[test]
+fn wrap_helper_is_exposed_from_wrap_module() {
+    let wrapped = wrap_text("CTX ████░░░░", 5);
+    assert!(!wrapped.is_empty());
 }
