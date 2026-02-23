@@ -17,3 +17,10 @@ fn no_reset_actions_exist_in_v1() {
     assert!(!labels.iter().any(|v| v.contains("Reset to last saved")));
     assert!(!labels.iter().any(|v| v.contains("Reset to factory")));
 }
+
+#[test]
+fn toggle_change_emits_live_apply_event() {
+    let mut ui = ConfigUiState::default();
+    let event = ui.on_toggle_changed("native.model-with-reasoning", false);
+    assert_eq!(event, ConfigUiEvent::LiveApply);
+}

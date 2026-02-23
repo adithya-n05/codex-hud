@@ -20,6 +20,7 @@ pub enum ConfigUiEvent {
     None,
     CloseWithoutPrompt,
     SaveAndClose,
+    LiveApply,
 }
 
 impl Default for ConfigUiState {
@@ -50,6 +51,10 @@ impl ConfigUiState {
         }
         self.on_key(key);
         ConfigUiEvent::None
+    }
+
+    pub fn on_toggle_changed(&mut self, _key: &str, _value: bool) -> ConfigUiEvent {
+        ConfigUiEvent::LiveApply
     }
 }
 
