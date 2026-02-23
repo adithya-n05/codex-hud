@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "codex-hud": "bin/codex-hud.js"
+  },
   "scripts": {
     "test": "node --test node-tests/*.test.mjs"
   }

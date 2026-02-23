@@ -7,5 +7,5 @@ export function resolveManagedBinaryPath(homeDir = homedir()) {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('codex-hud.js')) {
-  console.log(resolveManagedBinaryPath());
+  console.log('codex-hud wrapper');
 }
