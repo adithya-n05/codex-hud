@@ -1,6 +1,7 @@
 pub mod bottom_line;
 pub mod color;
 pub mod format;
+pub mod top_line;
 pub mod wrap;
 pub use color::{color_for_percent, format_percent_label, SeverityColor};
 
