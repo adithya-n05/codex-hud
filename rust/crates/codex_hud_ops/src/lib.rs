@@ -9,6 +9,7 @@ pub use shell_rc::remove_rc_block;
 pub mod compatibility;
 pub mod install_message;
 pub mod uninstall;
+pub use uninstall::run_uninstall_with_rc;
 
 pub fn ops_ready() -> bool {
     true

@@ -1,4 +1,5 @@
 use codex_hud_ops::remove_rc_block;
+use codex_hud_ops::uninstall::run_uninstall_with_rc;
 use tempfile::tempdir;
 
 #[test]
@@ -26,4 +27,15 @@ fn remove_rc_block_surfaces_rc_read_error_context() {
     let dir = tempfile::tempdir().unwrap();
     let err = remove_rc_block(dir.path()).unwrap_err();
     assert!(err.contains("rc read error:"));
+}
+
+#[test]
+fn uninstall_does_not_modify_unmanaged_rc_content() {
+    let tmp = tempdir().unwrap();
+    let rc = tmp.path().join(".zshrc");
+    std::fs::write(&rc, "export FOO=bar\nexport BAR=baz\n").unwrap();
+
+    run_uninstall_with_rc(tmp.path(), &rc).unwrap();
+    let after = std::fs::read_to_string(&rc).unwrap();
+    assert_eq!(after, "export FOO=bar\nexport BAR=baz\n");
 }
