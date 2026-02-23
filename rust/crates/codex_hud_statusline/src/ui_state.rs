@@ -52,3 +52,7 @@ impl ConfigUiState {
         ConfigUiEvent::None
     }
 }
+
+pub fn config_action_labels() -> Vec<&'static str> {
+    vec!["Apply Preset", "Save", "Cancel"]
+}

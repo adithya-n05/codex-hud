@@ -10,3 +10,10 @@ fn enter_on_save_row_saves_and_closes() {
     let event = ui.on_key_with_event(Key::Enter);
     assert_eq!(event, ConfigUiEvent::SaveAndClose);
 }
+
+#[test]
+fn no_reset_actions_exist_in_v1() {
+    let labels = codex_hud_statusline::config_action_labels();
+    assert!(!labels.iter().any(|v| v.contains("Reset to last saved")));
+    assert!(!labels.iter().any(|v| v.contains("Reset to factory")));
+}
