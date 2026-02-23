@@ -11,6 +11,7 @@ pub struct RenderInput {
     pub five_hour_percent: Option<u8>,
     pub weekly_percent: Option<u8>,
     pub width: Option<usize>,
+    pub colorblind_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,10 +78,24 @@ fn metric_bar(percent: u8, width: usize) -> String {
     format!("{}{}", "█".repeat(filled), "░".repeat(empty))
 }
 
+fn severity_word(percent: u8) -> &'static str {
+    if percent >= 85 {
+        "critical"
+    } else if percent >= 70 {
+        "warn"
+    } else {
+        "normal"
+    }
+}
+
 fn bottom_line(input: &RenderInput) -> String {
     let mut parts = Vec::new();
     if let Some(v) = input.context_percent {
-        parts.push(format!("CTX {v}% [{}]", metric_bar(v, 20)));
+        if input.colorblind_mode {
+            parts.push(format!("CTX {v}% {} [{}]", severity_word(v), metric_bar(v, 20)));
+        } else {
+            parts.push(format!("CTX {v}% [{}]", metric_bar(v, 20)));
+        }
     }
     if let Some(v) = input.five_hour_percent {
         parts.push(format!("5H {v}% [{}]", metric_bar(v, 20)));
