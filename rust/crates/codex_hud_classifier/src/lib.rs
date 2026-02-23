@@ -59,7 +59,7 @@ fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
         return auth::normalize_auth_override(&sanitize_auth_label(v));
     }
     if input.has_api_key {
-        if let Some(v) = auth::provider_specific_api_key_label(&provider_label, input.env_key_name.as_deref())
+        if let Some(v) = auth::provider_specific_api_key_label(provider_label, input.env_key_name.as_deref())
         {
             return v;
         }
