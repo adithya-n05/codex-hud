@@ -1,3 +1,5 @@
+pub mod wrap;
+
 #[derive(Debug, Clone, Default)]
 pub struct RenderInput {
     pub repo: Option<String>,
