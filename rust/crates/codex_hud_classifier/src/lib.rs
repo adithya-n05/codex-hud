@@ -1,7 +1,9 @@
 mod auth;
 pub mod input;
 mod provider;
+pub mod sanitize;
 pub use input::ClassifierInput;
+pub use sanitize::sanitize_auth_label;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Classification {
@@ -50,14 +52,6 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
         return v;
     }
     "Custom".to_string()
-}
-
-fn sanitize_auth_label(label: &str) -> String {
-    let lower = label.to_ascii_lowercase();
-    if lower.contains("bearer ") || lower.contains("sk-") {
-        return "Bearer token".to_string();
-    }
-    label.trim().to_string()
 }
 
 fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
