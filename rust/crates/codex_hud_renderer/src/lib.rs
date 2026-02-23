@@ -1,3 +1,4 @@
+pub mod bottom_line;
 pub mod wrap;
 
 #[derive(Debug, Clone, Default)]
