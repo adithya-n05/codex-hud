@@ -55,19 +55,27 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
     "Custom".to_string()
 }
 
-pub fn classify(input: &ClassifierInput) -> Classification {
-    if let (Some(provider), Some(auth)) = (
-        input.explicit_provider_override.as_ref(),
-        input.explicit_auth_override.as_ref(),
-    ) {
-        return Classification {
-            provider_label: provider.clone(),
-            auth_label: auth.clone(),
-        };
+fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
+    let _ = provider_label;
+    if let Some(v) = input.explicit_auth_override.as_ref() {
+        return v.clone();
     }
+    if input.has_api_key {
+        return "API key".to_string();
+    }
+    "Unknown".to_string()
+}
+
+pub fn classify(input: &ClassifierInput) -> Classification {
+    let provider_label = if let Some(provider) = input.explicit_provider_override.as_ref() {
+        provider.clone()
+    } else {
+        detect_provider_label(input)
+    };
+    let auth_label = detect_auth_label(input, &provider_label);
 
     Classification {
-        provider_label: detect_provider_label(input),
-        auth_label: "Unknown".to_string(),
+        provider_label,
+        auth_label,
     }
 }
