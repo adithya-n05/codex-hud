@@ -60,3 +60,7 @@ where
         _ => Err("unknown command".to_string()),
     }
 }
+
+pub fn automation_script_contract_supported() -> bool {
+    false
+}
