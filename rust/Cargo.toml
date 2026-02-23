@@ -1,0 +1,5 @@
+[workspace]
+members = [
+  "crates/codex_hud_domain"
+]
+resolver = "2"
