@@ -9,3 +9,7 @@ pub use shell_rc::remove_rc_block;
 pub fn ops_ready() -> bool {
     true
 }
+
+pub fn uninstall_mode() -> &'static str {
+    "non_interactive_no_prompt"
+}
