@@ -16,6 +16,7 @@ pub mod status;
 pub mod manifest_signing;
 pub mod integration_flow;
 pub mod paths;
+pub mod release_gate;
 
 pub fn ops_ready() -> bool {
     true
