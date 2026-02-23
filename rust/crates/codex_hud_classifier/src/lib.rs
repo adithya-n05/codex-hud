@@ -55,10 +55,18 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
     "Custom".to_string()
 }
 
+fn sanitize_auth_label(label: &str) -> String {
+    let lower = label.to_ascii_lowercase();
+    if lower.contains("bearer ") || lower.contains("sk-") {
+        return "Bearer token".to_string();
+    }
+    label.trim().to_string()
+}
+
 fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
     let _ = provider_label;
     if let Some(v) = input.explicit_auth_override.as_ref() {
-        return v.clone();
+        return sanitize_auth_label(v);
     }
     if input.has_api_key {
         return "API key".to_string();
