@@ -63,3 +63,14 @@ fn detect_chatgpt_auth() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "ChatGPT");
 }
+
+#[test]
+fn detect_api_key_from_env_key_name() {
+    let input = ClassifierInput {
+        env_key_name: Some("OPENAI_API_KEY".to_string()),
+        has_api_key: false,
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "API key");
+}

@@ -83,6 +83,14 @@ fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
         }
         return "API key".to_string();
     }
+    if input
+        .env_key_name
+        .as_deref()
+        .map(|v| v.to_ascii_uppercase().contains("API_KEY"))
+        .unwrap_or(false)
+    {
+        return "API key".to_string();
+    }
     if input.env_key_name.as_deref().is_some() {
         return "Env key".to_string();
     }
