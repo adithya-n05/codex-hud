@@ -52,3 +52,13 @@ fn parse_returns_syntax_error_for_malformed_toml() {
     let err = parse_hud_config(src).unwrap_err();
     assert!(err.starts_with("syntax error:"));
 }
+
+#[test]
+fn parse_rejects_unknown_key() {
+    let src = r#"
+[tui.codex_hud]
+mystery = true
+"#;
+    let err = parse_hud_config(src).unwrap_err();
+    assert!(err.contains("unknown key in tui.codex_hud"));
+}

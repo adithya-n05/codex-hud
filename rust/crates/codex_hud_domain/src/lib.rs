@@ -1,4 +1,5 @@
 pub mod defaults;
+pub mod parse;
 pub mod validate;
 pub use defaults::VisualOptions;
 pub use defaults::PrivacyOptions;
@@ -134,6 +135,8 @@ pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
     {
         return Err("project-level codex_hud config is not supported".to_string());
     }
+
+    parse::reject_unknown_top_keys(&value)?;
 
     let warn = value
         .get("tui")
