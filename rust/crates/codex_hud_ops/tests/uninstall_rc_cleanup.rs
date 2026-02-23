@@ -20,3 +20,10 @@ export BAR=baz
     assert!(out.contains("export BAR=baz"));
     assert!(!out.contains("CODEX HUD MANAGED BLOCK"));
 }
+
+#[test]
+fn remove_rc_block_surfaces_rc_read_error_context() {
+    let dir = tempfile::tempdir().unwrap();
+    let err = remove_rc_block(dir.path()).unwrap_err();
+    assert!(err.contains("rc read error:"));
+}

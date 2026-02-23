@@ -23,7 +23,7 @@ pub fn remove_rc_block(rc_path: &Path) -> Result<(), String> {
     let existing = match std::fs::read_to_string(rc_path) {
         Ok(v) => v,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(format!("rc read error: {e}")),
     };
     let mut out = Vec::new();
     let mut in_block = false;
