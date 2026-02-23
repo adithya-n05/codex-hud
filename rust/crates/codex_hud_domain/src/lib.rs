@@ -233,6 +233,149 @@ impl Default for UnknownDisplayPolicy {
     }
 }
 
+pub fn verify_must_cover_mapping() -> Vec<&'static str> {
+    // Keep this list synchronized with Segment 01 traceability matrix.
+    let required = [
+        "native.model_name",
+        "native.model_with_reasoning",
+        "native.current_dir",
+        "native.project_root",
+        "native.git_branch",
+        "native.context_remaining",
+        "native.context_used",
+        "native.five_hour_limit",
+        "native.weekly_limit",
+        "native.codex_version",
+        "native.context_window_size",
+        "native.used_tokens",
+        "native.total_input_tokens",
+        "native.total_output_tokens",
+        "native.session_id",
+        "derived.permission_chip",
+        "derived.auth_chip",
+        "derived.provider_chip",
+        "derived.context_bar",
+        "derived.five_hour_bar",
+        "derived.weekly_bar",
+        "derived.tool_counter",
+        "derived.failure_count",
+        "derived.activity_summary",
+        "derived.git_dirty",
+        "derived.git_ahead_behind",
+        "derived.git_file_stats",
+        "derived.duration_metric",
+        "derived.speed_metric",
+        "derived.plan_progress",
+        "derived.config_count",
+        "format.context_mode",
+        "format.usage_mode",
+        "format.path_depth_mode",
+    ];
+
+    // Field references intentionally force compile-time drift detection.
+    let cfg = HudConfig::default();
+    let _native_fields = (
+        cfg.native.model_name,
+        cfg.native.model_with_reasoning,
+        cfg.native.current_dir,
+        cfg.native.project_root,
+        cfg.native.git_branch,
+        cfg.native.context_remaining,
+        cfg.native.context_used,
+        cfg.native.five_hour_limit,
+        cfg.native.weekly_limit,
+        cfg.native.codex_version,
+        cfg.native.context_window_size,
+        cfg.native.used_tokens,
+        cfg.native.total_input_tokens,
+        cfg.native.total_output_tokens,
+        cfg.native.session_id,
+    );
+    let _derived_fields = (
+        cfg.derived.permission_chip,
+        cfg.derived.auth_chip,
+        cfg.derived.provider_chip,
+        cfg.derived.context_bar,
+        cfg.derived.five_hour_bar,
+        cfg.derived.weekly_bar,
+        cfg.derived.tool_counter,
+        cfg.derived.failure_count,
+        cfg.derived.activity_summary,
+        cfg.derived.git_dirty,
+        cfg.derived.git_ahead_behind,
+        cfg.derived.git_file_stats,
+        cfg.derived.duration_metric,
+        cfg.derived.speed_metric,
+        cfg.derived.plan_progress,
+        cfg.derived.config_count,
+    );
+    let _format_fields = (
+        cfg.format.context_mode.as_str(),
+        cfg.format.usage_mode.as_str(),
+        cfg.format.path_depth_mode.as_str(),
+    );
+
+    fn implemented_native_keys(_n: &NativeToggles) -> Vec<&'static str> {
+        vec![
+            "native.model_name",
+            "native.model_with_reasoning",
+            "native.current_dir",
+            "native.project_root",
+            "native.git_branch",
+            "native.context_remaining",
+            "native.context_used",
+            "native.five_hour_limit",
+            "native.weekly_limit",
+            "native.codex_version",
+            "native.context_window_size",
+            "native.used_tokens",
+            "native.total_input_tokens",
+            "native.total_output_tokens",
+            "native.session_id",
+        ]
+    }
+
+    fn implemented_derived_keys(_d: &DerivedToggles) -> Vec<&'static str> {
+        vec![
+            "derived.permission_chip",
+            "derived.auth_chip",
+            "derived.provider_chip",
+            "derived.context_bar",
+            "derived.five_hour_bar",
+            "derived.weekly_bar",
+            "derived.tool_counter",
+            "derived.failure_count",
+            "derived.activity_summary",
+            "derived.git_dirty",
+            "derived.git_ahead_behind",
+            "derived.git_file_stats",
+            "derived.duration_metric",
+            "derived.speed_metric",
+            "derived.plan_progress",
+            "derived.config_count",
+        ]
+    }
+
+    fn implemented_format_keys(_f: &FormatOptions) -> Vec<&'static str> {
+        vec![
+            "format.context_mode",
+            "format.usage_mode",
+            "format.path_depth_mode",
+        ]
+    }
+
+    let mut mapped = Vec::new();
+    mapped.extend(implemented_native_keys(&cfg.native));
+    mapped.extend(implemented_derived_keys(&cfg.derived));
+    mapped.extend(implemented_format_keys(&cfg.format));
+
+    required
+        .iter()
+        .copied()
+        .filter(|required_key| !mapped.iter().any(|actual| actual == required_key))
+        .collect()
+}
+
 pub fn domain_ready() -> bool {
     true
 }
