@@ -14,6 +14,7 @@ fn narrow_width_wraps_but_keeps_two_logical_lines() {
         five_hour_percent: Some(76),
         weekly_percent: Some(44),
         width: Some(40),
+        ..RenderInput::default()
     };
 
     let out = render_hud(&input);
