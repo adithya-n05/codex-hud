@@ -34,10 +34,25 @@ fn top_line_with_width(input: &RenderInput) -> String {
     if let Some(v) = input.permission.as_ref() {
         fields.push(format!("perm {v}"));
     }
-    if let Some(v) = input.auth_label.as_ref() {
+    let normalized_auth = input.auth_label.as_ref().map(|v| {
+        if v.trim().is_empty() {
+            "Unknown".to_string()
+        } else {
+            v.clone()
+        }
+    });
+    if let Some(v) = normalized_auth {
         fields.push(format!("auth {v}"));
     }
-    if let Some(v) = input.provider_label.as_ref() {
+
+    let normalized_provider = input.provider_label.as_ref().map(|v| {
+        if v.trim().is_empty() {
+            "Custom".to_string()
+        } else {
+            v.clone()
+        }
+    });
+    if let Some(v) = normalized_provider {
         fields.push(format!("provider {v}"));
     }
     if let Some(v) = input.model_label.as_ref() {
