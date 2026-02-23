@@ -37,3 +37,14 @@ fn live_apply_updates_serialized_config_for_supported_toggle() {
             .is_some_and(|v| v.contains("model_with_reasoning = false"))
     );
 }
+
+#[test]
+fn invalid_toggle_key_is_noop_for_live_apply() {
+    let mut ui = ConfigUiState::default();
+    ui.current_config = "[tui.codex_hud.native]\nmodel_with_reasoning = true\n".to_string();
+    let before = ui.current_config.clone();
+    let event = ui.on_toggle_changed("native.unknown_toggle", false);
+    assert_eq!(event, ConfigUiEvent::None);
+    assert_eq!(ui.current_config, before);
+    assert!(ui.last_live_apply_payload.is_none());
+}

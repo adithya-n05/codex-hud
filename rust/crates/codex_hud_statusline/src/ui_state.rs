@@ -67,8 +67,9 @@ impl ConfigUiState {
                 .replace("model_with_reasoning = false", "model_with_reasoning = __VALUE__")
                 .replace("__VALUE__", bool_text);
             self.last_live_apply_payload = Some(self.current_config.clone());
+            return ConfigUiEvent::LiveApply;
         }
-        ConfigUiEvent::LiveApply
+        ConfigUiEvent::None
     }
 }
 
