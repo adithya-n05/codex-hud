@@ -16,3 +16,15 @@ fn apply_preset_is_exposed_from_preset_module() {
     apply_preset(&mut cfg, Preset::Full);
     assert_eq!(cfg.preset, Preset::Full);
 }
+
+#[test]
+fn parse_hud_config_is_owned_by_config_module() {
+    let src = r#"
+[tui.codex_hud.native]
+model_name = false
+model_with_reasoning = true
+"#;
+    let cfg = parse_from_config(src).unwrap();
+    assert!(!cfg.native.model_name);
+    assert!(cfg.native.model_with_reasoning);
+}
