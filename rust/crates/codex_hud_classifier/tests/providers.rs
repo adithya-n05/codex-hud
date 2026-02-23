@@ -43,3 +43,13 @@ fn detect_openai_from_provider_id_or_name() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "OpenAI");
 }
+
+#[test]
+fn detect_provider_from_model_name_hint() {
+    let input = ClassifierInput {
+        model_name: Some("anthropic.claude-3-5-sonnet-bedrock".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "AWS Bedrock");
+}

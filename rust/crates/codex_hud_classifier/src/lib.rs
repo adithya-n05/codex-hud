@@ -1,3 +1,5 @@
+mod provider;
+
 #[derive(Debug, Clone, Default)]
 pub struct ClassifierInput {
     pub explicit_provider_override: Option<String>,
@@ -51,6 +53,9 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
             .unwrap_or(false)
     {
         return "OpenAI".to_string();
+    }
+    if let Some(v) = provider::detect_provider_from_model_name(input.model_name.as_deref()) {
+        return v;
     }
     "Custom".to_string()
 }
