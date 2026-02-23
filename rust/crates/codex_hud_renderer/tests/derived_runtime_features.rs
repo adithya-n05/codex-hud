@@ -19,3 +19,14 @@ fn speed_metric_renders_when_present() {
     let out = render_hud(&input);
     assert!(out.logical_lines[1].contains("spd 42t/s"));
 }
+
+#[test]
+fn plan_progress_renders_when_present() {
+    let input = RenderInput {
+        plan_done: Some(3),
+        plan_total: Some(5),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out.logical_lines[1].contains("plan 3/5"));
+}

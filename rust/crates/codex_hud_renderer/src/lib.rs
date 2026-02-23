@@ -18,6 +18,8 @@ pub struct RenderInput {
     pub weekly_percent: Option<u8>,
     pub duration_seconds: Option<u64>,
     pub tokens_per_second: Option<u64>,
+    pub plan_done: Option<u64>,
+    pub plan_total: Option<u64>,
     pub width: Option<usize>,
     pub colorblind_mode: bool,
 }
@@ -116,6 +118,9 @@ fn bottom_line(input: &RenderInput) -> String {
     }
     if let Some(v) = input.tokens_per_second {
         parts.push(format!("spd {v}t/s"));
+    }
+    if let (Some(done), Some(total)) = (input.plan_done, input.plan_total) {
+        parts.push(format!("plan {done}/{total}"));
     }
     parts.join(" | ")
 }
