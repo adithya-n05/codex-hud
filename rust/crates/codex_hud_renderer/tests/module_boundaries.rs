@@ -2,6 +2,7 @@ use codex_hud_renderer::{top_line::render_top_line, RenderInput};
 use codex_hud_renderer::bar::metric_bar;
 use codex_hud_renderer::bottom_line::render_bottom_line;
 use codex_hud_renderer::wrap::wrap_text;
+use codex_hud_renderer::color::severity_word_for_percent;
 
 #[test]
 fn top_line_renderer_is_exposed_from_top_line_module() {
@@ -36,4 +37,11 @@ fn bottom_line_renderer_is_exposed_from_bottom_line_module() {
 fn wrap_helper_is_exposed_from_wrap_module() {
     let wrapped = wrap_text("CTX ████░░░░", 5);
     assert!(!wrapped.is_empty());
+}
+
+#[test]
+fn color_module_exposes_textual_severity_helper() {
+    assert_eq!(severity_word_for_percent(69), "normal");
+    assert_eq!(severity_word_for_percent(70), "warn");
+    assert_eq!(severity_word_for_percent(85), "critical");
 }

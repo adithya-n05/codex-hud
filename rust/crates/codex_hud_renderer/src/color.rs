@@ -18,3 +18,13 @@ pub fn color_for_percent(percent: u8) -> SeverityColor {
 pub fn format_percent_label(percent: u8) -> String {
     format!("{percent}%")
 }
+
+pub fn severity_word_for_percent(percent: u8) -> &'static str {
+    if percent >= 85 {
+        "critical"
+    } else if percent >= 70 {
+        "warn"
+    } else {
+        "normal"
+    }
+}
