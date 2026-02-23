@@ -1,3 +1,6 @@
+pub mod defaults;
+pub use defaults::VisualOptions;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Preset {
     Minimal,
