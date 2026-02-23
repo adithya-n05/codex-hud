@@ -15,6 +15,7 @@ pub mod unsupported_notice;
 pub mod status;
 pub mod manifest_signing;
 pub mod integration_flow;
+pub mod paths;
 
 pub fn ops_ready() -> bool {
     true
