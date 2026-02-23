@@ -96,3 +96,17 @@ fn detect_bedrock_auth_label_from_aws_signing_headers() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "AWS creds");
 }
+
+#[test]
+fn detect_vertex_auth_label_from_google_header() {
+    let input = ClassifierInput {
+        base_url: Some(
+            "https://us-central1-aiplatform.googleapis.com/v1/projects/p/locations/l/endpoints/openapi"
+                .to_string(),
+        ),
+        has_bearer_header: true,
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "GCP token");
+}
