@@ -6,8 +6,8 @@ pub struct ManagedPaths {
 
 pub fn managed_paths(home: &str, windows: bool) -> ManagedPaths {
     if windows {
-        let root = format!("{}/.codex-hud", home.trim_end_matches('/'));
-        let bin_dir = format!("{root}/bin");
+        let root = format!("{}\\.codex-hud", home.trim_end_matches('\\'));
+        let bin_dir = format!("{}\\bin", root);
         ManagedPaths { root, bin_dir }
     } else {
         let root = format!("{}/.codex-hud", home.trim_end_matches('/'));
