@@ -216,6 +216,23 @@ impl EditSession {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownDisplayPolicy {
+    pub provider_unknown_label: String,
+    pub auth_unknown_label: String,
+    pub render_unknown_explicitly: bool,
+}
+
+impl Default for UnknownDisplayPolicy {
+    fn default() -> Self {
+        Self {
+            provider_unknown_label: "Custom".to_string(),
+            auth_unknown_label: "Unknown".to_string(),
+            render_unknown_explicitly: true,
+        }
+    }
+}
+
 pub fn domain_ready() -> bool {
     true
 }
