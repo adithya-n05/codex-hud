@@ -31,6 +31,13 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
         if lower.contains(".services.ai.azure.com") && lower.contains("/models") {
             return "Azure Foundry".to_string();
         }
+        if lower.contains("aiplatform.googleapis.com")
+            && lower.contains("/projects/")
+            && lower.contains("/locations/")
+            && lower.contains("/endpoints/openapi")
+        {
+            return "GCP Vertex".to_string();
+        }
     }
     "Custom".to_string()
 }

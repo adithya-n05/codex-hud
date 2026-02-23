@@ -19,3 +19,16 @@ fn detect_azure_foundry_from_endpoint() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "Azure Foundry");
 }
+
+#[test]
+fn detect_vertex_from_openapi_endpoint() {
+    let input = ClassifierInput {
+        base_url: Some(
+            "https://us-central1-aiplatform.googleapis.com/v1/projects/p/locations/l/endpoints/openapi"
+                .to_string(),
+        ),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "GCP Vertex");
+}
