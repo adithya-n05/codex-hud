@@ -1,5 +1,7 @@
 pub mod bottom_line;
+pub mod color;
 pub mod wrap;
+pub use color::format_percent_label;
 
 #[derive(Debug, Clone, Default)]
 pub struct RenderInput {
