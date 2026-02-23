@@ -1,3 +1,4 @@
+mod auth;
 mod provider;
 
 #[derive(Debug, Clone, Default)]
@@ -69,12 +70,14 @@ fn sanitize_auth_label(label: &str) -> String {
 }
 
 fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
-    let _ = provider_label;
     if let Some(v) = input.explicit_auth_override.as_ref() {
-        return sanitize_auth_label(v);
+        return auth::normalize_auth_override(&sanitize_auth_label(v));
     }
     if input.has_api_key {
         return "API key".to_string();
+    }
+    if provider_label == "Azure OpenAI" && input.has_bearer_header {
+        return "Entra token".to_string();
     }
     "Unknown".to_string()
 }
