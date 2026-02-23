@@ -7,6 +7,7 @@ pub mod shell_rc;
 pub use shell_rc::ensure_rc_block;
 pub use shell_rc::remove_rc_block;
 pub mod compatibility;
+pub mod install_message;
 
 pub fn ops_ready() -> bool {
     true
