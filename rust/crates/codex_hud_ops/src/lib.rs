@@ -2,6 +2,8 @@ pub mod preflight;
 pub use preflight::{preflight, PreflightInput};
 pub mod shim;
 pub use shim::write_codex_shim;
+pub mod shell_rc;
+pub use shell_rc::ensure_rc_block;
 
 pub fn ops_ready() -> bool {
     true
