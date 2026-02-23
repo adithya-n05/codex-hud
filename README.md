@@ -1,4 +1,4 @@
-# codex-hud
+# Codex HUD
 
 ## Install
 
