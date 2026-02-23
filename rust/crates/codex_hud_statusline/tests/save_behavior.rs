@@ -2,9 +2,11 @@ use codex_hud_statusline::{ConfigUiEvent, ConfigUiState, Key};
 
 #[test]
 fn enter_on_save_row_saves_and_closes() {
-    let mut ui = ConfigUiState::default();
-    ui.selected_index = 9;
-    ui.row_count = 10;
+    let mut ui = ConfigUiState {
+        selected_index: 9,
+        row_count: 10,
+        ..Default::default()
+    };
 
     let event = ui.on_key_with_event(Key::Enter);
     assert_eq!(event, ConfigUiEvent::SaveAndClose);
@@ -26,8 +28,10 @@ fn toggle_change_emits_live_apply_event() {
 
 #[test]
 fn live_apply_updates_serialized_config_for_supported_toggle() {
-    let mut ui = ConfigUiState::default();
-    ui.current_config = "[tui.codex_hud.native]\nmodel_with_reasoning = true\n".to_string();
+    let mut ui = ConfigUiState {
+        current_config: "[tui.codex_hud.native]\nmodel_with_reasoning = true\n".to_string(),
+        ..Default::default()
+    };
     let event = ui.on_toggle_changed("native.model_with_reasoning", false);
     assert_eq!(event, ConfigUiEvent::LiveApply);
     assert!(ui.current_config.contains("model_with_reasoning = false"));
@@ -40,8 +44,10 @@ fn live_apply_updates_serialized_config_for_supported_toggle() {
 
 #[test]
 fn invalid_toggle_key_is_noop_for_live_apply() {
-    let mut ui = ConfigUiState::default();
-    ui.current_config = "[tui.codex_hud.native]\nmodel_with_reasoning = true\n".to_string();
+    let mut ui = ConfigUiState {
+        current_config: "[tui.codex_hud.native]\nmodel_with_reasoning = true\n".to_string(),
+        ..Default::default()
+    };
     let before = ui.current_config.clone();
     let event = ui.on_toggle_changed("native.unknown_toggle", false);
     assert_eq!(event, ConfigUiEvent::None);

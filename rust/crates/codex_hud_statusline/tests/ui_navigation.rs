@@ -10,8 +10,10 @@ fn down_key_moves_selection() {
 
 #[test]
 fn up_key_clamps_at_zero() {
-    let mut ui = ConfigUiState::default();
-    ui.selected_index = 2;
+    let mut ui = ConfigUiState {
+        selected_index: 2,
+        ..Default::default()
+    };
     ui.on_key(Key::Up);
     assert_eq!(ui.selected_index, 1);
     ui.on_key(Key::Up);

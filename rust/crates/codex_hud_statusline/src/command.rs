@@ -11,11 +11,7 @@ pub fn parse_statusline_invocation<const N: usize>(
         return Err("/statusline does not accept arguments in v1".to_string());
     }
 
-    if collected.is_empty() {
-        Ok(StatuslineAction::OpenInteractiveUi)
-    } else {
-        Ok(StatuslineAction::OpenInteractiveUi)
-    }
+    Ok(StatuslineAction::OpenInteractiveUi)
 }
 
 pub fn initial_screen(is_first_run: bool) -> &'static str {
