@@ -2,7 +2,7 @@ pub mod bottom_line;
 pub mod color;
 pub mod format;
 pub mod wrap;
-pub use color::format_percent_label;
+pub use color::{color_for_percent, format_percent_label, SeverityColor};
 
 #[derive(Debug, Clone, Default)]
 pub struct RenderInput {
