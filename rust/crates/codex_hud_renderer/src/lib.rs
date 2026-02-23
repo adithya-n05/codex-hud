@@ -25,6 +25,8 @@ pub struct RenderInput {
     pub git_ahead: Option<u64>,
     pub git_behind: Option<u64>,
     pub git_file_stats: Option<String>,
+    pub failure_count: Option<u64>,
+    pub activity_summary: Option<String>,
     pub width: Option<usize>,
     pub colorblind_mode: bool,
 }
@@ -138,6 +140,12 @@ fn bottom_line(input: &RenderInput) -> String {
     }
     if let Some(v) = input.config_count {
         parts.push(format!("cfg {v}"));
+    }
+    if let Some(v) = input.failure_count {
+        parts.push(format!("fail {v}"));
+    }
+    if let Some(v) = input.activity_summary.as_ref() {
+        parts.push(format!("activity {v}"));
     }
     parts.join(" | ")
 }

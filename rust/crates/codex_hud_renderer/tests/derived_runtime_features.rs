@@ -55,3 +55,15 @@ fn git_extended_indicators_render_when_present() {
     assert!(out.logical_lines[0].contains("↑2↓1"));
     assert!(out.logical_lines[0].contains("+5/-2"));
 }
+
+#[test]
+fn failure_and_activity_summary_render_when_present() {
+    let input = RenderInput {
+        failure_count: Some(3),
+        activity_summary: Some("core+mcp+web".to_string()),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out.logical_lines[1].contains("fail 3"));
+    assert!(out.logical_lines[1].contains("activity core+mcp+web"));
+}
