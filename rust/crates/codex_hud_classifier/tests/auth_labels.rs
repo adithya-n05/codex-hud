@@ -10,3 +10,15 @@ fn detect_openai_auth_label() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "OpenAI auth");
 }
+
+#[test]
+fn detect_bedrock_api_key_label() {
+    let input = ClassifierInput {
+        base_url: Some("https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1".to_string()),
+        has_api_key: true,
+        env_key_name: Some("BEDROCK_API_KEY".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "Bedrock API key");
+}

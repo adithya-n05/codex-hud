@@ -6,3 +6,11 @@ pub fn normalize_auth_override(value: &str) -> String {
         value.to_string()
     }
 }
+
+pub fn provider_specific_api_key_label(provider_label: &str, env_key: Option<&str>) -> Option<String> {
+    if provider_label == "AWS Bedrock" && env_key.unwrap_or_default().to_ascii_uppercase().contains("BEDROCK")
+    {
+        return Some("Bedrock API key".to_string());
+    }
+    None
+}
