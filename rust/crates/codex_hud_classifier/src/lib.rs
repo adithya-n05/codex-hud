@@ -1,6 +1,6 @@
 mod auth;
 pub mod input;
-mod provider;
+pub mod provider;
 pub mod sanitize;
 pub use input::ClassifierInput;
 pub use sanitize::sanitize_auth_label;
