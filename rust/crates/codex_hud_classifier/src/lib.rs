@@ -22,6 +22,16 @@ pub fn classifier_ready() -> bool {
     true
 }
 
+fn detect_provider_label(input: &ClassifierInput) -> String {
+    if let Some(url) = input.base_url.as_deref() {
+        let lower = url.to_ascii_lowercase();
+        if lower.contains(".openai.azure.com") && lower.contains("/openai/v1") {
+            return "Azure OpenAI".to_string();
+        }
+    }
+    "Custom".to_string()
+}
+
 pub fn classify(input: &ClassifierInput) -> Classification {
     if let (Some(provider), Some(auth)) = (
         input.explicit_provider_override.as_ref(),
@@ -34,7 +44,7 @@ pub fn classify(input: &ClassifierInput) -> Classification {
     }
 
     Classification {
-        provider_label: "Custom".to_string(),
+        provider_label: detect_provider_label(input),
         auth_label: "Unknown".to_string(),
     }
 }
