@@ -1,5 +1,6 @@
 [workspace]
 members = [
-  "crates/codex_hud_domain"
+  "crates/codex_hud_domain",
+  "crates/codex_hud_classifier"
 ]
 resolver = "2"
