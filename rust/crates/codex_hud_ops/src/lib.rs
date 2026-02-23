@@ -1,5 +1,6 @@
 pub mod preflight;
 pub use preflight::{preflight, PreflightInput};
+pub use preflight::preflight_guarded_install_root;
 pub mod shim;
 pub use shim::write_codex_shim;
 pub mod shell_rc;

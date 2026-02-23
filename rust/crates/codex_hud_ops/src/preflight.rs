@@ -1,4 +1,5 @@
 use crate::compatibility::is_supported_exact;
+use std::path::Path;
 
 #[derive(Debug, Clone, Default)]
 pub struct PreflightInput {
@@ -25,5 +26,11 @@ pub fn preflight(input: &PreflightInput) -> Result<(), String> {
     if !is_supported_exact(&key, &input.supported_keys) {
         return Err("Unsupported Codex version+sha; running stock Codex".to_string());
     }
+    Ok(())
+}
+
+pub fn preflight_guarded_install_root(home: &Path, input: &PreflightInput) -> Result<(), String> {
+    preflight(input)?;
+    std::fs::create_dir_all(home.join(".codex-hud")).map_err(|e| e.to_string())?;
     Ok(())
 }
