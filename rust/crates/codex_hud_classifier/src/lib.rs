@@ -94,6 +94,14 @@ fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
     if input.env_key_name.as_deref().is_some() {
         return "Env key".to_string();
     }
+    if provider_label == "AWS Bedrock"
+        && input
+            .env_header_keys
+            .iter()
+            .any(|h| h.eq_ignore_ascii_case("X-Amz-Date"))
+    {
+        return "AWS creds".to_string();
+    }
     if provider_label == "Azure OpenAI" && input.has_bearer_header {
         return "Entra token".to_string();
     }

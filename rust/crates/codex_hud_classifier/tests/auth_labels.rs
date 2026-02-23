@@ -85,3 +85,14 @@ fn detect_entra_token_for_azure_openai() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "Entra token");
 }
+
+#[test]
+fn detect_bedrock_auth_label_from_aws_signing_headers() {
+    let input = ClassifierInput {
+        base_url: Some("https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1".to_string()),
+        env_header_keys: vec!["X-Amz-Date".to_string()],
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "AWS creds");
+}
