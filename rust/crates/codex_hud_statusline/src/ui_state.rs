@@ -15,6 +15,13 @@ pub struct ConfigUiState {
     pub row_count: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfigUiEvent {
+    None,
+    CloseWithoutPrompt,
+    SaveAndClose,
+}
+
 impl Default for ConfigUiState {
     fn default() -> Self {
         Self {
@@ -32,5 +39,13 @@ impl ConfigUiState {
         if key == Key::Up && self.selected_index > 0 {
             self.selected_index -= 1;
         }
+    }
+
+    pub fn on_key_with_event(&mut self, key: Key) -> ConfigUiEvent {
+        if key == Key::Esc {
+            return ConfigUiEvent::CloseWithoutPrompt;
+        }
+        self.on_key(key);
+        ConfigUiEvent::None
     }
 }
