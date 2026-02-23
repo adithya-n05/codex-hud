@@ -43,3 +43,13 @@ fn detect_bearer_token_label() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "Bearer token");
 }
+
+#[test]
+fn detect_no_auth_label() {
+    let input = ClassifierInput {
+        explicit_auth_override: Some(" no AUTH ".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "No auth");
+}
