@@ -40,3 +40,18 @@ fn config_count_renders_when_present() {
     let out = render_hud(&input);
     assert!(out.logical_lines[1].contains("cfg 12"));
 }
+
+#[test]
+fn git_extended_indicators_render_when_present() {
+    let input = RenderInput {
+        git_dirty: Some(true),
+        git_ahead: Some(2),
+        git_behind: Some(1),
+        git_file_stats: Some("+5/-2".to_string()),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out.logical_lines[0].contains("dirty"));
+    assert!(out.logical_lines[0].contains("↑2↓1"));
+    assert!(out.logical_lines[0].contains("+5/-2"));
+}

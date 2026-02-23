@@ -21,6 +21,10 @@ pub struct RenderInput {
     pub plan_done: Option<u64>,
     pub plan_total: Option<u64>,
     pub config_count: Option<u64>,
+    pub git_dirty: Option<bool>,
+    pub git_ahead: Option<u64>,
+    pub git_behind: Option<u64>,
+    pub git_file_stats: Option<String>,
     pub width: Option<usize>,
     pub colorblind_mode: bool,
 }
@@ -72,6 +76,15 @@ fn top_line_with_width(input: &RenderInput) -> String {
     }
     if let Some(v) = input.tool_count {
         fields.push(format!("tools {v}"));
+    }
+    if input.git_dirty == Some(true) {
+        fields.push("dirty".to_string());
+    }
+    if let (Some(ahead), Some(behind)) = (input.git_ahead, input.git_behind) {
+        fields.push(format!("↑{ahead}↓{behind}"));
+    }
+    if let Some(v) = input.git_file_stats.as_ref() {
+        fields.push(v.clone());
     }
 
     if let Some(width) = input.width {
