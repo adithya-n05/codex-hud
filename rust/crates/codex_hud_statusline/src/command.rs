@@ -25,3 +25,21 @@ pub fn initial_screen(is_first_run: bool) -> &'static str {
         "main_config"
     }
 }
+
+pub fn validate_statusline_command_name(command_name: &str) -> Result<(), String> {
+    if command_name == "/statusline" {
+        return Ok(());
+    }
+    if command_name == "/hud" {
+        return Err("`/hud` is not available in v1. Use `/statusline`.".to_string());
+    }
+    Err("unknown statusline command".to_string())
+}
+
+pub fn parse_statusline_command<const N: usize>(
+    command_name: &str,
+    args: [&str; N],
+) -> Result<StatuslineAction, String> {
+    validate_statusline_command_name(command_name)?;
+    parse_statusline_invocation(args)
+}

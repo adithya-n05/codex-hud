@@ -3,6 +3,7 @@ pub use patch_contract::patch_contract;
 pub mod command;
 pub use command::{parse_statusline_invocation, StatuslineAction};
 pub use command::initial_screen;
+pub use command::{parse_statusline_command, validate_statusline_command_name};
 pub mod ui_state;
 pub use ui_state::{ConfigUiState, Key};
 pub use ui_state::ConfigUiEvent;
