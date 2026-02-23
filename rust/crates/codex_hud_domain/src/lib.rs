@@ -123,7 +123,9 @@ impl Default for DerivedToggles {
 }
 
 pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
-    let value = src.parse::<toml::Value>().map_err(|e| e.to_string())?;
+    let value = src
+        .parse::<toml::Value>()
+        .map_err(|e| format!("syntax error: {e}"))?;
 
     if value
         .get("project")

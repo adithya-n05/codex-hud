@@ -45,3 +45,10 @@ critical_percent = 85
     let err = parse_hud_config(src).unwrap_err();
     assert!(err.contains("threshold must be between 0 and 100"));
 }
+
+#[test]
+fn parse_returns_syntax_error_for_malformed_toml() {
+    let src = r#"[tui.codex_hud.visual\nwarn_percent = 70"#;
+    let err = parse_hud_config(src).unwrap_err();
+    assert!(err.starts_with("syntax error:"));
+}
