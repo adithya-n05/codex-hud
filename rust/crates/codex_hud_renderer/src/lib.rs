@@ -23,30 +23,37 @@ pub fn renderer_ready() -> bool {
     true
 }
 
-fn top_line(input: &RenderInput) -> String {
-    let mut parts = Vec::new();
+fn top_line_with_width(input: &RenderInput) -> String {
+    let mut fields = vec![];
     if let Some(v) = input.repo.as_ref() {
-        parts.push(format!("repo {v}"));
+        fields.push(format!("repo {v}"));
     }
     if let Some(v) = input.branch.as_ref() {
-        parts.push(format!("branch {v}"));
+        fields.push(format!("branch {v}"));
     }
     if let Some(v) = input.permission.as_ref() {
-        parts.push(format!("perm {v}"));
+        fields.push(format!("perm {v}"));
     }
     if let Some(v) = input.auth_label.as_ref() {
-        parts.push(format!("auth {v}"));
+        fields.push(format!("auth {v}"));
     }
     if let Some(v) = input.provider_label.as_ref() {
-        parts.push(format!("provider {v}"));
+        fields.push(format!("provider {v}"));
     }
     if let Some(v) = input.model_label.as_ref() {
-        parts.push(format!("model {v}"));
+        fields.push(format!("model {v}"));
     }
     if let Some(v) = input.tool_count {
-        parts.push(format!("tools {v}"));
+        fields.push(format!("tools {v}"));
     }
-    parts.join(" | ")
+
+    if let Some(width) = input.width {
+        while !fields.is_empty() && fields.join(" | ").len() > width {
+            fields.pop();
+        }
+    }
+
+    fields.join(" | ")
 }
 
 fn metric_bar(percent: u8, width: usize) -> String {
@@ -90,7 +97,7 @@ fn wrap_line(line: &str, width: usize) -> Vec<String> {
 }
 
 pub fn render_hud(input: &RenderInput) -> RenderOutput {
-    let line1 = top_line(input);
+    let line1 = top_line_with_width(input);
     let line2 = bottom_line(input);
     let logical_lines = vec![line1, line2];
     let wrapped_lines = if let Some(width) = input.width {
