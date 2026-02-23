@@ -10,3 +10,11 @@ pub fn metric_fragment(label: &str, percent: u8, usage_mode: Option<&str>) -> St
     }
     format!("{label} {percent}% [{}]", usage_bar(percent, 8))
 }
+
+pub fn compact_path(path: &str, segments: usize) -> String {
+    let parts: Vec<&str> = path.split('/').filter(|v| !v.is_empty()).collect();
+    if parts.len() <= segments {
+        return parts.join("/");
+    }
+    parts[parts.len() - segments..].join("/")
+}
