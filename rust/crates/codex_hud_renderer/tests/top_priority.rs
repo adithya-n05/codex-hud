@@ -10,6 +10,9 @@ fn top_line_uses_priority_order() {
         provider_label: Some("OpenAI".to_string()),
         model_label: Some("gpt-5.3-codex high".to_string()),
         tool_count: Some(47),
+        context_percent: None,
+        five_hour_percent: None,
+        weekly_percent: None,
     };
 
     let out = render_hud(&input);
