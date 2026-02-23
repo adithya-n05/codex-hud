@@ -1,3 +1,4 @@
+pub mod config;
 pub mod defaults;
 pub mod edit_session;
 pub mod parse;
