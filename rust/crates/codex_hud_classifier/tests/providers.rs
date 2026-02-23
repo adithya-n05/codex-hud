@@ -9,3 +9,13 @@ fn detect_azure_openai_from_endpoint() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "Azure OpenAI");
 }
+
+#[test]
+fn detect_azure_foundry_from_endpoint() {
+    let input = ClassifierInput {
+        base_url: Some("https://myhub.services.ai.azure.com/models".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "Azure Foundry");
+}

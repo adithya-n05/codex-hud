@@ -28,6 +28,9 @@ fn detect_provider_label(input: &ClassifierInput) -> String {
         if lower.contains(".openai.azure.com") && lower.contains("/openai/v1") {
             return "Azure OpenAI".to_string();
         }
+        if lower.contains(".services.ai.azure.com") && lower.contains("/models") {
+            return "Azure Foundry".to_string();
+        }
     }
     "Custom".to_string()
 }
