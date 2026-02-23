@@ -6,5 +6,6 @@ pub fn release_gate_requirements() -> Vec<String> {
         "smoke:macos-latest".to_string(),
         "smoke:ubuntu-latest".to_string(),
         "smoke:windows-latest".to_string(),
+        "release_source:git_tag".to_string(),
     ]
 }
