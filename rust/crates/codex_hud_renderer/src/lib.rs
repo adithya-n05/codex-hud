@@ -1,3 +1,4 @@
+pub mod bar;
 pub mod bottom_line;
 pub mod color;
 pub mod format;
