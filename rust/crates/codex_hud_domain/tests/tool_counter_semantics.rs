@@ -14,7 +14,9 @@ fn tool_counter_counts_default_families_in_session_scope() {
     let defaults = ToolCounterOptions::default();
     assert_eq!(count_tool_events(&events, &defaults), 5);
 
-    let mut non_session_scope = ToolCounterOptions::default();
-    non_session_scope.scope = "current_turn".to_string();
+    let non_session_scope = ToolCounterOptions {
+        scope: "current_turn".to_string(),
+        ..ToolCounterOptions::default()
+    };
     assert_eq!(count_tool_events(&events, &non_session_scope), 0);
 }
