@@ -14,6 +14,7 @@ pub use uninstall::reverse_patch_if_exact_state;
 pub mod unsupported_notice;
 pub mod status;
 pub mod manifest_signing;
+pub mod integration_flow;
 
 pub fn ops_ready() -> bool {
     true
