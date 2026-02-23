@@ -23,7 +23,13 @@ where
     match collected[1].as_str() {
         "install" => Ok(Command::Install),
         "uninstall" => Ok(Command::Uninstall),
-        "status" => Ok(Command::Status),
+        "status" => {
+            if collected.get(2).map(|s| s.as_str()) == Some("details") {
+                Ok(Command::StatusDetails)
+            } else {
+                Ok(Command::Status)
+            }
+        }
         _ => Err("unknown command".to_string()),
     }
 }
