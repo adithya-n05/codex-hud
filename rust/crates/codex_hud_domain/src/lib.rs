@@ -162,7 +162,23 @@ pub fn parse_hud_config(src: &str) -> Result<HudConfig, String> {
         return Err("warn_percent must be <= critical_percent".to_string());
     }
 
-    Ok(HudConfig::default())
+    let mut cfg = HudConfig::default();
+    if let Some(table) = value
+        .get("tui")
+        .and_then(|v| v.get("codex_hud"))
+        .and_then(|v| v.get("native"))
+        .and_then(toml::Value::as_table)
+    {
+        cfg.native.model_name = table
+            .get("model_name")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(cfg.native.model_name);
+        cfg.native.model_with_reasoning = table
+            .get("model_with_reasoning")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(cfg.native.model_with_reasoning);
+    }
+    Ok(cfg)
 }
 
 pub fn apply_preset(cfg: &mut HudConfig, preset: Preset) {
