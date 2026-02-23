@@ -30,3 +30,13 @@ fn plan_progress_renders_when_present() {
     let out = render_hud(&input);
     assert!(out.logical_lines[1].contains("plan 3/5"));
 }
+
+#[test]
+fn config_count_renders_when_present() {
+    let input = RenderInput {
+        config_count: Some(12),
+        ..RenderInput::default()
+    };
+    let out = render_hud(&input);
+    assert!(out.logical_lines[1].contains("cfg 12"));
+}
