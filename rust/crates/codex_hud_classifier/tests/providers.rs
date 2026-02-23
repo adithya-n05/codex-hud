@@ -63,3 +63,13 @@ fn detect_bedrock_from_mantle_endpoint() {
     let out = classify(&input);
     assert_eq!(out.provider_label, "AWS Bedrock");
 }
+
+#[test]
+fn detect_bedrock_from_runtime_endpoint() {
+    let input = ClassifierInput {
+        base_url: Some("https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "AWS Bedrock");
+}

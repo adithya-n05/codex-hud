@@ -3,6 +3,9 @@ pub fn detect_provider_from_endpoint(base_url: Option<&str>) -> Option<String> {
     if lower.contains("bedrock-mantle") && lower.contains(".api.aws") {
         return Some("AWS Bedrock".to_string());
     }
+    if lower.contains("bedrock-runtime") && lower.contains(".amazonaws.com") {
+        return Some("AWS Bedrock".to_string());
+    }
     None
 }
 
