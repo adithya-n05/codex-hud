@@ -1,6 +1,10 @@
 use std::path::Path;
 
 pub fn ensure_rc_block(rc_path: &Path, managed_bin_path: &str) -> Result<(), String> {
+    if !rc_path.exists() {
+        std::fs::write(rc_path, "").map_err(|e| e.to_string())?;
+    }
+
     let begin = "# BEGIN CODEX HUD MANAGED BLOCK";
     let end = "# END CODEX HUD MANAGED BLOCK";
 
