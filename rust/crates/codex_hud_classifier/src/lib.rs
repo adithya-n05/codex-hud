@@ -22,7 +22,17 @@ pub fn classifier_ready() -> bool {
     true
 }
 
-pub fn classify(_input: &ClassifierInput) -> Classification {
+pub fn classify(input: &ClassifierInput) -> Classification {
+    if let (Some(provider), Some(auth)) = (
+        input.explicit_provider_override.as_ref(),
+        input.explicit_auth_override.as_ref(),
+    ) {
+        return Classification {
+            provider_label: provider.clone(),
+            auth_label: auth.clone(),
+        };
+    }
+
     Classification {
         provider_label: "Custom".to_string(),
         auth_label: "Unknown".to_string(),
