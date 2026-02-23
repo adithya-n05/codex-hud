@@ -59,6 +59,49 @@ impl Default for NativeToggles {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DerivedToggles {
+    pub permission_chip: bool,
+    pub auth_chip: bool,
+    pub provider_chip: bool,
+    pub context_bar: bool,
+    pub five_hour_bar: bool,
+    pub weekly_bar: bool,
+    pub tool_counter: bool,
+    pub failure_count: bool,
+    pub activity_summary: bool,
+    pub git_dirty: bool,
+    pub git_ahead_behind: bool,
+    pub git_file_stats: bool,
+    pub duration_metric: bool,
+    pub speed_metric: bool,
+    pub plan_progress: bool,
+    pub config_count: bool,
+}
+
+impl Default for DerivedToggles {
+    fn default() -> Self {
+        Self {
+            permission_chip: true,
+            auth_chip: true,
+            provider_chip: true,
+            context_bar: true,
+            five_hour_bar: true,
+            weekly_bar: true,
+            tool_counter: false,
+            failure_count: false,
+            activity_summary: false,
+            git_dirty: false,
+            git_ahead_behind: false,
+            git_file_stats: false,
+            duration_metric: false,
+            speed_metric: false,
+            plan_progress: false,
+            config_count: false,
+        }
+    }
+}
+
 pub fn domain_ready() -> bool {
     true
 }
