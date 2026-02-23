@@ -50,3 +50,26 @@ impl Default for FormatOptions {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolCounterOptions {
+    pub scope: String,
+    pub include_core: bool,
+    pub include_mcp: bool,
+    pub include_web: bool,
+    pub include_patch: bool,
+    pub include_failures: bool,
+}
+
+impl Default for ToolCounterOptions {
+    fn default() -> Self {
+        Self {
+            scope: "session_total".to_string(),
+            include_core: true,
+            include_mcp: true,
+            include_web: true,
+            include_patch: true,
+            include_failures: true,
+        }
+    }
+}
