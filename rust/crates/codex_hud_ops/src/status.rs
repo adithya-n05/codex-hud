@@ -45,8 +45,14 @@ pub fn render_status_details(s: &StatusSnapshot) -> String {
             .as_deref()
             .map(redact_secret_like)
             .unwrap_or_else(|| "unknown".to_string()),
-        s.managed_root.clone().unwrap_or_else(|| "unknown".to_string()),
-        s.stock_codex_path.clone().unwrap_or_else(|| "unknown".to_string()),
+        s.managed_root
+            .as_deref()
+            .map(redact_secret_like)
+            .unwrap_or_else(|| "unknown".to_string()),
+        s.stock_codex_path
+            .as_deref()
+            .map(redact_secret_like)
+            .unwrap_or_else(|| "unknown".to_string()),
         unsupported_notice,
     )
 }
