@@ -10,6 +10,7 @@
     "bin/",
     "scripts/",
     "rust/",
+    "package.json",
     "README.md",
     "LICENSE"
   ],
