@@ -1,3 +1,4 @@
+use codex_hud_classifier::auth::normalize_auth_override;
 use codex_hud_classifier::input::ClassifierInput;
 use codex_hud_classifier::provider::detect_provider_from_endpoint;
 use codex_hud_classifier::sanitize::sanitize_auth_label;
@@ -19,4 +20,9 @@ fn provider_endpoint_detector_is_exposed_from_provider_module() {
         "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
     ));
     assert_eq!(out.as_deref(), Some("AWS Bedrock"));
+}
+
+#[test]
+fn auth_normalizer_is_exposed_from_auth_module() {
+    assert_eq!(normalize_auth_override("openai-auth"), "OpenAI auth");
 }

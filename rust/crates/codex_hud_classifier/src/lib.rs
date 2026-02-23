@@ -1,4 +1,4 @@
-mod auth;
+pub mod auth;
 pub mod input;
 pub mod provider;
 pub mod sanitize;
