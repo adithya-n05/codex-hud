@@ -2,6 +2,8 @@
 pub enum Command {
     Install,
     Uninstall,
+    Status,
+    StatusDetails,
 }
 
 pub fn parse_args<I, S>(args: I) -> Result<Command, String>
@@ -14,10 +16,14 @@ where
         .map(|s| s.as_ref().to_string())
         .collect::<Vec<_>>();
 
-    match collected.get(1).map(String::as_str) {
-        Some("install") => Ok(Command::Install),
-        Some("uninstall") => Ok(Command::Uninstall),
-        Some(_) => Err("unknown command".to_string()),
-        None => Err("missing command".to_string()),
+    if collected.len() < 2 {
+        return Err("missing command".to_string());
+    }
+
+    match collected[1].as_str() {
+        "install" => Ok(Command::Install),
+        "uninstall" => Ok(Command::Uninstall),
+        "status" => Ok(Command::Status),
+        _ => Err("unknown command".to_string()),
     }
 }
