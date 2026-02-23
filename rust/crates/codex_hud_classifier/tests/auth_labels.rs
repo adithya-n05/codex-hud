@@ -33,3 +33,13 @@ fn detect_env_key_label() {
     let out = classify(&input);
     assert_eq!(out.auth_label, "Env key");
 }
+
+#[test]
+fn detect_bearer_token_label() {
+    let input = ClassifierInput {
+        has_bearer_header: true,
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.auth_label, "Bearer token");
+}

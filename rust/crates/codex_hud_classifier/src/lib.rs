@@ -89,6 +89,9 @@ fn detect_auth_label(input: &ClassifierInput, provider_label: &str) -> String {
     if provider_label == "Azure OpenAI" && input.has_bearer_header {
         return "Entra token".to_string();
     }
+    if input.has_bearer_header {
+        return "Bearer token".to_string();
+    }
     "Unknown".to_string()
 }
 
