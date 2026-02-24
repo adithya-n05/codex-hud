@@ -8,6 +8,16 @@ Thanks for helping improve `codex-hud`.
 - Keep changes focused and reviewable.
 - For non-trivial features or behavior changes, open an issue first.
 
+## Quality Bar
+
+`codex-hud` is maintained as a high code-quality repository. Contributions should favor clean, understandable, and well-tested changes over quick patches.
+
+- Keep logic cohesive and avoid cross-layer coupling.
+- Prefer explicit behavior and clear failure modes over hidden side effects.
+- Add or update tests for every behavior change, bug fix, or regression risk.
+- Do not merge changes with failing checks; all required verification must pass locally.
+- Treat code review feedback on correctness, reliability, and maintainability as release-blocking.
+
 ## Development Setup
 
 1. Install prerequisites:

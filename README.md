@@ -68,6 +68,8 @@ To run and contribute locally, install:
 - Rust stable toolchain
 - Git
 
+This repository has a high bar for clean, well-tested code. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution quality expectations and required checks.
+
 ## Development Install
 
 ```bash
