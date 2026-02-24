@@ -5,6 +5,7 @@ import {
   mkdirSync,
   writeFileSync,
 } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
@@ -16,6 +17,33 @@ export function resolvePackagedRuntimeBinary(
 ) {
   const exe = platform === 'win32' ? 'codex_hud_cli.exe' : 'codex_hud_cli';
   return join(packageRoot, 'dist', 'runtime', `${platform}-${arch}`, exe);
+}
+
+export function resolveLocalBuiltRuntimeBinary(
+  packageRoot,
+  platform = process.platform,
+) {
+  const exe = platform === 'win32' ? 'codex_hud_cli.exe' : 'codex_hud_cli';
+  return join(packageRoot, 'rust', 'target', 'release', exe);
+}
+
+function tryBuildRuntimeOnInstall(packageRoot, platform = process.platform) {
+  const manifestPath = join(packageRoot, 'rust', 'Cargo.toml');
+  if (!existsSync(manifestPath)) {
+    return null;
+  }
+
+  const build = spawnSync(
+    'cargo',
+    ['build', '--release', '--manifest-path', manifestPath, '-p', 'codex_hud_cli'],
+    { stdio: 'ignore' },
+  );
+  if (build.status !== 0) {
+    return null;
+  }
+
+  const built = resolveLocalBuiltRuntimeBinary(packageRoot, platform);
+  return existsSync(built) ? built : null;
 }
 
 function writeUnixDevFallback(runtimePath, packageRoot) {
@@ -63,16 +91,30 @@ export function runPostinstallForHome(
   homeDir = homedir(),
   platform = process.platform,
   arch = process.arch,
+  options = {},
 ) {
   const runtimeDir = join(homeDir, '.codex-hud', 'bin');
   mkdirSync(runtimeDir, { recursive: true });
 
   const packagedRuntime = resolvePackagedRuntimeBinary(packageRoot, platform, arch);
+  const localBuiltRuntime = resolveLocalBuiltRuntimeBinary(packageRoot, platform);
+  const skipLocalBuild =
+    options.skipLocalBuild ?? process.env.CODEX_HUD_SKIP_LOCAL_BUILD === '1';
+  const resolvedBuiltRuntime =
+    options.resolveBuiltRuntime ??
+    ((root, runtimePlatform) => tryBuildRuntimeOnInstall(root, runtimePlatform));
+  const runtimeCandidate = existsSync(packagedRuntime)
+    ? packagedRuntime
+    : existsSync(localBuiltRuntime)
+      ? localBuiltRuntime
+      : !skipLocalBuild
+        ? resolvedBuiltRuntime(packageRoot, platform, arch)
+        : null;
   if (platform === 'win32') {
     const cmdPath = join(runtimeDir, 'codex-hud.cmd');
-    if (existsSync(packagedRuntime)) {
+    if (runtimeCandidate) {
       const exePath = join(runtimeDir, 'codex-hud.exe');
-      copyFileSync(packagedRuntime, exePath);
+      copyFileSync(runtimeCandidate, exePath);
       const cmdShim = ['@echo off', `"${exePath}" %*`, ''].join('\r\n');
       writeFileSync(cmdPath, cmdShim);
     } else {
@@ -80,8 +122,8 @@ export function runPostinstallForHome(
     }
   } else {
     const runtimePath = join(runtimeDir, 'codex-hud');
-    if (existsSync(packagedRuntime)) {
-      copyFileSync(packagedRuntime, runtimePath);
+    if (runtimeCandidate) {
+      copyFileSync(runtimeCandidate, runtimePath);
       chmodSync(runtimePath, 0o755);
     } else {
       writeUnixDevFallback(runtimePath, packageRoot);
