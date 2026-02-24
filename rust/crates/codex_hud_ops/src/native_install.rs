@@ -940,4 +940,27 @@ env.CODEX_HUD_NATIVE_PATCH = "1";
                 .unwrap();
         assert!(matches!(out, InstallOutcome::RanStock { reason } if reason.contains("compatibility gate rejected patch")));
     }
+
+    #[test]
+    fn write_npm_patch_state_errors_when_parent_path_is_blocked() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join(".codex-hud"), "not-a-directory").unwrap();
+
+        let err = write_npm_patch_state(&home, "k", "vendor", "cached").unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn ad_hoc_codesign_is_attempted_for_macho_binaries() {
+        use super::ad_hoc_codesign_if_needed;
+
+        let tmp = tempdir().unwrap();
+        let target = tmp.path().join("missing-bin");
+        let macho = [0xfe, 0xed, 0xfa, 0xcf];
+        let err = ad_hoc_codesign_if_needed(&target, &macho).unwrap_err();
+        assert!(err.contains("codesign"));
+    }
 }

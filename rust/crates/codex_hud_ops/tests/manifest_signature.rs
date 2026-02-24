@@ -61,8 +61,21 @@ fn verify_with_public_key_rejects_invalid_signature_hex_and_length() {
 
 #[test]
 fn verify_with_public_key_rejects_invalid_32_byte_public_key() {
+    use ed25519_dalek::VerifyingKey;
+
     let sig = sign_manifest_for_tests("manifest");
-    let invalid_but_sized_key = "ff".repeat(32);
+    let invalid_but_sized_key = [0x00u8, 0xff, 0x7f, 0x80, 0x01, 0x02]
+        .iter()
+        .find_map(|byte| {
+            let candidate = [*byte; 32];
+            if VerifyingKey::from_bytes(&candidate).is_err() {
+                Some(hex::encode(candidate))
+            } else {
+                None
+            }
+        })
+        .expect("expected at least one invalid 32-byte key pattern");
+
     assert!(!verify_manifest_signature_with_public_key(
         "manifest",
         &sig,
