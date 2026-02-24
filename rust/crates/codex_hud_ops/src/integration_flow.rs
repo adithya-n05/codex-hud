@@ -11,7 +11,8 @@ pub fn integration_install(home: &Path, stock_codex_path: &str) -> Result<(), St
     std::fs::create_dir_all(&managed_bin_dir).map_err(|e| e.to_string())?;
 
     let runtime = managed_bin_dir.join("codex-hud");
-    let runtime_script = r#"#!/usr/bin/env sh
+    if !runtime.exists() {
+        let runtime_script = r#"#!/usr/bin/env sh
 if [ "$1" = "run" ] && [ "$2" = "--stock-codex" ]; then
   shift 2
   stock="$1"
@@ -23,14 +24,15 @@ if [ "$1" = "run" ] && [ "$2" = "--stock-codex" ]; then
 fi
 printf "%s\n" "$*"
 "#;
-    std::fs::write(&runtime, runtime_script).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        let mut perms = std::fs::metadata(&runtime)
-            .map_err(|e| e.to_string())?
-            .permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&runtime, perms).map_err(|e| e.to_string())?;
+        std::fs::write(&runtime, runtime_script).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            let mut perms = std::fs::metadata(&runtime)
+                .map_err(|e| e.to_string())?
+                .permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&runtime, perms).map_err(|e| e.to_string())?;
+        }
     }
 
     std::fs::write(

@@ -1,5 +1,6 @@
 use crate::dispatch::CommandHandlers;
-use codex_hud_ops::integration_flow::{integration_status, integration_status_details};
+use codex_hud_ops::codex_probe::detect_codex_path;
+use codex_hud_ops::integration_flow::{integration_install, integration_status, integration_status_details};
 use codex_hud_ops::native_install::{
     install_native_patch_auto, run_stock_codex_passthrough, uninstall_native_patch_auto,
     InstallOutcome,
@@ -30,6 +31,8 @@ impl CommandHandlers for RealHandlers {
     fn run_install(&self) -> Result<String, String> {
         let home = user_home()?;
         let path_env = std::env::var("PATH").unwrap_or_default();
+        let stock_codex = detect_codex_path(None, &path_env)?;
+        integration_install(&home, stock_codex.to_string_lossy().as_ref())?;
         match install_native_patch_auto(&home, &path_env)? {
             InstallOutcome::Patched => Ok("install: patched".to_string()),
             InstallOutcome::RanStock { reason } => Ok(format!("install: stock ({reason})")),
