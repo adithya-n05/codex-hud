@@ -1,5 +1,6 @@
 use codex_hud_ops::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
 use codex_hud_ops::native_install::{
+    build_patched_native_binary_for_test,
     install_native_patch, install_native_patch_auto_for_stock_path, install_native_patch_auto_with,
     install_native_patch_using_cached_binary,
     run_stock_codex_passthrough, run_stock_codex_passthrough_interactive, uninstall_native_patch,
@@ -241,6 +242,12 @@ fn install_replaces_vendor_binary_with_cached_patched_binary() {
         std::fs::read(&vendor_binary).unwrap(),
         std::fs::read(&cached).unwrap()
     );
+}
+
+#[test]
+fn build_step_fails_cleanly_when_codex_upstream_source_missing() {
+    let err = build_patched_native_binary_for_test(Path::new("/missing"), "0.104.0+abc").unwrap_err();
+    assert!(err.contains("codex-upstream source tree not found"));
 }
 
 #[test]

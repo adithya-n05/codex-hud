@@ -23,6 +23,16 @@ pub fn patched_binary_cache_path_for_test(home: &Path, key: &str) -> PathBuf {
     patched_binary_cache_path(home, key)
 }
 
+pub fn build_patched_native_binary_for_test(
+    codex_upstream_root: &Path,
+    _compatibility_key: &str,
+) -> Result<PathBuf, String> {
+    if !codex_upstream_root.exists() {
+        return Err("codex-upstream source tree not found".to_string());
+    }
+    Ok(codex_upstream_root.join("codex"))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstallOutcome {
     Patched,
