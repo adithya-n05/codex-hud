@@ -130,9 +130,52 @@ fn install_route_works_with_home_and_path_only() {
         .output()
         .unwrap();
 
-    assert!(out2.status.success());
-    let stdout2 = String::from_utf8_lossy(&out2.stdout);
-    assert!(stdout2.contains(
-        "install: stock (native patch substrate unavailable for installed codex layout)"
+    assert!(!out2.status.success());
+    let stderr2 = String::from_utf8_lossy(&out2.stderr);
+    assert!(stderr2.contains(
+        "install blocked: native patch substrate unavailable for installed codex layout"
     ));
+}
+
+#[test]
+fn install_route_fails_when_current_codex_is_not_supported() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let bin_dir = tmp.path().join("bin");
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::create_dir_all(&bin_dir).unwrap();
+
+    let codex = if cfg!(windows) {
+        bin_dir.join("codex.cmd")
+    } else {
+        bin_dir.join("codex")
+    };
+    #[cfg(windows)]
+    std::fs::write(&codex, "@echo off\r\necho codex-cli 0.104.0\r\n").unwrap();
+    #[cfg(not(windows))]
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    let existing = std::env::var("PATH").unwrap_or_default();
+    let sep = if cfg!(windows) { ';' } else { ':' };
+    let path_value = format!("{}{}{}", bin_dir.to_string_lossy(), sep, existing);
+
+    let cli = env!("CARGO_BIN_EXE_codex_hud_cli");
+    let out = Command::new(cli)
+        .arg("install")
+        .env("HOME", &home)
+        .env("PATH", path_value)
+        .output()
+        .unwrap();
+
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("install blocked"));
 }

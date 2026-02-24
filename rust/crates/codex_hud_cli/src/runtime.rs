@@ -35,7 +35,7 @@ impl CommandHandlers for RealHandlers {
         integration_install(&home, stock_codex.to_string_lossy().as_ref())?;
         match install_native_patch_auto(&home, &path_env)? {
             InstallOutcome::Patched => Ok("install: patched".to_string()),
-            InstallOutcome::RanStock { reason } => Ok(format!("install: stock ({reason})")),
+            InstallOutcome::RanStock { reason } => Err(format!("install blocked: {reason}")),
         }
     }
 
