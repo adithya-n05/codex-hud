@@ -221,6 +221,14 @@ pub fn install_native_patch_auto(home: &Path, path_env: &str) -> Result<InstallO
     install_native_patch_auto_with(home, path_env, None, None)
 }
 
+pub fn install_native_patch_auto_for_stock_path(
+    home: &Path,
+    path_env: &str,
+    stock_codex_path: &Path,
+) -> Result<InstallOutcome, String> {
+    install_native_patch_auto_with(home, path_env, Some(stock_codex_path), None)
+}
+
 pub fn install_native_patch_auto_with(
     home: &Path,
     path_env: &str,

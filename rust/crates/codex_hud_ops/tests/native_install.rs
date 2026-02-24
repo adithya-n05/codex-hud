@@ -1,7 +1,7 @@
 use codex_hud_ops::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
 use codex_hud_ops::native_install::{
-    install_native_patch, install_native_patch_auto_with, run_stock_codex_passthrough,
-    uninstall_native_patch, InstallOutcome,
+    install_native_patch, install_native_patch_auto_for_stock_path, install_native_patch_auto_with,
+    run_stock_codex_passthrough, uninstall_native_patch, InstallOutcome,
 };
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -409,4 +409,80 @@ console.log(env.PATH);
     assert_eq!(out, InstallOutcome::Patched);
     let patched = std::fs::read_to_string(&launcher).unwrap();
     assert!(patched.contains("codex-hud-managed"));
+}
+
+#[test]
+fn install_auto_uses_explicit_stock_path_when_path_env_is_broken() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let bad_bin = tmp.path().join("bad-bin");
+    let bad_codex = if cfg!(windows) {
+        bad_bin.join("codex.cmd")
+    } else {
+        bad_bin.join("codex")
+    };
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::create_dir_all(&bad_bin).unwrap();
+    #[cfg(windows)]
+    std::fs::write(&bad_codex, "@echo off\r\necho NOT_A_VERSION\r\n").unwrap();
+    #[cfg(not(windows))]
+    std::fs::write(&bad_codex, "#!/usr/bin/env sh\necho NOT_A_VERSION\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&bad_codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&bad_codex, perms).unwrap();
+    }
+
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &launcher,
+        r#"#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("codex-cli 0.104.0");
+  process.exit(0);
+}
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+console.log(env.PATH);
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&launcher).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&launcher, perms).unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+            key, signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let path_env = bad_bin.to_string_lossy().to_string();
+    let out = install_native_patch_auto_for_stock_path(&home, &path_env, &launcher).unwrap();
+    assert_eq!(out, InstallOutcome::Patched);
 }
