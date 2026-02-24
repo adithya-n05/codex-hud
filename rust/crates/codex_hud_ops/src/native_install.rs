@@ -360,6 +360,7 @@ pub fn install_native_patch_auto_with(
 ) -> Result<InstallOutcome, String> {
     let codex = detect_codex_path(explicit_codex_path, path_env)?;
     let key = probe_compatibility_key(Some(&codex), path_env)?;
+    let is_npm_layout = detect_npm_package_root_from_codex_binary(&codex).is_some();
     let compat_manifest = home.join(".codex-hud/compat/compat.json");
     let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
     let refresh_source = match refresh_compat_bundle(home, compat_base_url) {
@@ -390,7 +391,26 @@ pub fn install_native_patch_auto_with(
         }
     };
 
-    if detect_npm_package_root_from_codex_binary(&codex).is_some() {
+    if !compat_manifest.exists() || !pubkey_path.exists() {
+        return Ok(InstallOutcome::RanStock {
+            reason: "compatibility bundle unavailable".to_string(),
+        });
+    }
+    let public_key_hex = std::fs::read_to_string(pubkey_path).map_err(|e| e.to_string())?;
+    let install_mode = match resolve_install_mode(&compat_manifest, &key, public_key_hex.trim()) {
+        Ok(v) => v,
+        Err(err) => {
+            return Ok(InstallOutcome::RanStock {
+                reason: format!("compatibility gate rejected patch: {err}"),
+            })
+        }
+    };
+
+    if let InstallMode::RunStock { reason } = install_mode {
+        return Ok(InstallOutcome::RanStock { reason });
+    }
+
+    if is_npm_layout {
         let cached = patched_binary_cache_path(home, &key);
         if !cached.exists() {
             return Ok(InstallOutcome::RanStock {
@@ -398,13 +418,6 @@ pub fn install_native_patch_auto_with(
             });
         }
     }
-
-    if !compat_manifest.exists() || !pubkey_path.exists() {
-        return Ok(InstallOutcome::RanStock {
-            reason: "compatibility bundle unavailable".to_string(),
-        });
-    }
-    let public_key_hex = std::fs::read_to_string(pubkey_path).map_err(|e| e.to_string())?;
 
     let out = match install_native_patch(&codex_root, &key, &compat_manifest, public_key_hex.trim())
     {
@@ -416,8 +429,7 @@ pub fn install_native_patch_auto_with(
         }
     };
 
-    if out == InstallOutcome::Patched && detect_npm_package_root_from_codex_binary(&codex).is_some()
-    {
+    if out == InstallOutcome::Patched && is_npm_layout {
         install_native_patch_using_cached_binary(home, &codex, &key)?;
     }
 
