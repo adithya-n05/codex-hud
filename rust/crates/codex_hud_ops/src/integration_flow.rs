@@ -6,6 +6,31 @@ use crate::uninstall::run_uninstall;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
+fn read_trimmed(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+fn read_policy_fields(home: &Path) -> (Option<String>, Option<String>) {
+    let path = home.join(".codex-hud/last_run_policy.txt");
+    let raw = match std::fs::read_to_string(path) {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+    let mut mode = None;
+    let mut reason = None;
+    for line in raw.lines() {
+        if let Some(value) = line.strip_prefix("mode=") {
+            mode = Some(value.trim().to_string());
+        } else if let Some(value) = line.strip_prefix("reason=") {
+            reason = Some(value.trim().to_string());
+        }
+    }
+    (mode, reason)
+}
+
 pub fn integration_install(home: &Path, stock_codex_path: &str) -> Result<(), String> {
     let managed_bin_dir = home.join(".codex-hud").join("bin");
     std::fs::create_dir_all(&managed_bin_dir).map_err(|e| e.to_string())?;
@@ -88,6 +113,10 @@ pub fn integration_status(home: &Path) -> Result<String, String> {
             .ok()
             .map(|s| s.trim().to_string());
 
+    let (patch_mode, patch_reason) = read_policy_fields(home);
+    let compat_key = read_trimmed(&home.join(".codex-hud/compat/last_compat_key.txt"));
+    let compat_refresh_source = read_trimmed(&home.join(".codex-hud/compat/refresh_source.txt"));
+
     let snapshot = StatusSnapshot {
         installed,
         shim_present: shim,
@@ -97,10 +126,10 @@ pub fn integration_status(home: &Path) -> Result<String, String> {
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),
         stock_codex_path,
-        patch_mode: None,
-        patch_reason: None,
-        compat_key: None,
-        compat_refresh_source: None,
+        patch_mode,
+        patch_reason,
+        compat_key,
+        compat_refresh_source,
     };
     let mut out = render_status_summary(&snapshot);
     out.push_str(&format!(
@@ -125,6 +154,10 @@ pub fn integration_status_details(home: &Path) -> Result<String, String> {
             .ok()
             .map(|s| s.trim().to_string());
 
+    let (patch_mode, patch_reason) = read_policy_fields(home);
+    let compat_key = read_trimmed(&home.join(".codex-hud/compat/last_compat_key.txt"));
+    let compat_refresh_source = read_trimmed(&home.join(".codex-hud/compat/refresh_source.txt"));
+
     let snapshot = StatusSnapshot {
         installed,
         shim_present: shim,
@@ -134,10 +167,10 @@ pub fn integration_status_details(home: &Path) -> Result<String, String> {
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),
         stock_codex_path,
-        patch_mode: None,
-        patch_reason: None,
-        compat_key: None,
-        compat_refresh_source: None,
+        patch_mode,
+        patch_reason,
+        compat_key,
+        compat_refresh_source,
     };
     Ok(render_status_details(&snapshot))
 }

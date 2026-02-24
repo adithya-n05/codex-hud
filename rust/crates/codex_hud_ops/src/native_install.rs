@@ -231,6 +231,14 @@ fn discover_source_root_from_codex_binary(codex_path: &Path) -> Option<PathBuf> 
     None
 }
 
+fn persist_compat_metadata(home: &Path, key: &str, source: &str) -> Result<(), String> {
+    let compat_dir = home.join(".codex-hud/compat");
+    std::fs::create_dir_all(&compat_dir).map_err(|e| e.to_string())?;
+    std::fs::write(compat_dir.join("last_compat_key.txt"), key).map_err(|e| e.to_string())?;
+    std::fs::write(compat_dir.join("refresh_source.txt"), source).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn install_native_patch_auto(home: &Path, path_env: &str) -> Result<InstallOutcome, String> {
     install_native_patch_auto_with(home, path_env, None, None)
 }
@@ -253,14 +261,19 @@ pub fn install_native_patch_auto_with(
     let key = probe_compatibility_key(Some(&codex), path_env)?;
     let compat_manifest = home.join(".codex-hud/compat/compat.json");
     let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
-
-    if let Err(err) = refresh_compat_bundle(home, compat_base_url) {
-        if !compat_manifest.exists() || !pubkey_path.exists() {
-            return Ok(InstallOutcome::RanStock {
-                reason: format!("compatibility bundle refresh failed: {err}"),
-            });
+    let refresh_source = match refresh_compat_bundle(home, compat_base_url) {
+        Ok(()) => "github-release",
+        Err(err) => {
+            if !compat_manifest.exists() || !pubkey_path.exists() {
+                return Ok(InstallOutcome::RanStock {
+                    reason: format!("compatibility bundle refresh failed: {err}"),
+                });
+            }
+            "local-cache-fallback"
         }
-    }
+    };
+
+    persist_compat_metadata(home, &key, refresh_source)?;
 
     let codex_root = if let Some(root) = detect_npm_package_root_from_codex_binary(&codex) {
         root
