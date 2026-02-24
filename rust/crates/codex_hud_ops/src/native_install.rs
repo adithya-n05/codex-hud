@@ -149,7 +149,16 @@ fn npm_patch_state_matches(
         return Ok(false);
     }
     let vendor = std::fs::read(vendor_binary).map_err(|e| e.to_string())?;
-    Ok(state.vendor_sha256 == sha256_hex(&vendor))
+    let vendor_sha = sha256_hex(&vendor);
+    if state.vendor_sha256 != vendor_sha {
+        return Ok(false);
+    }
+    let cached = patched_binary_cache_path(home, key);
+    if !cached.exists() {
+        return Ok(false);
+    }
+    let cached_bytes = std::fs::read(cached).map_err(|e| e.to_string())?;
+    Ok(sha256_hex(&cached_bytes) == vendor_sha)
 }
 
 fn is_macho_binary(bytes: &[u8]) -> bool {
