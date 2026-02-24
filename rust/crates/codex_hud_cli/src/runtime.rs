@@ -1,9 +1,12 @@
 use crate::dispatch::CommandHandlers;
-use codex_hud_ops::codex_probe::detect_codex_path;
+use codex_hud_ops::codex_probe::{detect_codex_path, probe_compatibility_key};
 use codex_hud_ops::integration_flow::{integration_install, integration_status, integration_status_details};
 use codex_hud_ops::native_install::{
     install_native_patch_auto, install_native_patch_auto_for_stock_path, InstallOutcome,
     run_stock_codex_passthrough, uninstall_native_patch_auto,
+};
+use codex_hud_ops::unsupported_notice::{
+    build_unsupported_notice_message, should_show_unsupported_notice,
 };
 use std::path::{Path, PathBuf};
 
@@ -51,11 +54,19 @@ impl CommandHandlers for RealHandlers {
     ) -> Result<String, String> {
         let home = user_home()?;
         let path_env = std::env::var("PATH").unwrap_or_default();
-        let _ = install_native_patch_auto_for_stock_path(
+        let install_outcome = install_native_patch_auto_for_stock_path(
             &home,
             &path_env,
             Path::new(stock_codex_path),
         );
+        if let Ok(InstallOutcome::RanStock { .. }) = &install_outcome {
+            if let Ok(key) = probe_compatibility_key(Some(Path::new(stock_codex_path)), &path_env) {
+                let state = home.join(".codex-hud/unsupported-notice-seen.txt");
+                if should_show_unsupported_notice(&key, &state).unwrap_or(false) {
+                    eprintln!("{}", build_unsupported_notice_message(&key));
+                }
+            }
+        }
         let out = run_stock_codex_passthrough(Path::new(stock_codex_path), passthrough_args)?;
         if out.status_code != 0 {
             return Err(format!("stock codex exited with {}", out.status_code));

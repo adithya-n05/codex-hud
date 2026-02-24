@@ -100,3 +100,53 @@ console.log(env.PATH);
     let patched = std::fs::read_to_string(&launcher).unwrap();
     assert!(patched.contains("codex-hud-managed"));
 }
+
+#[test]
+fn run_route_emits_unsupported_notice_once_per_compat_key() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    let stock = tmp.path().join("stock-codex");
+    std::fs::write(&stock, "#!/usr/bin/env sh\necho \"codex-cli 0.104.0\"\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&stock).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&stock, perms).unwrap();
+    }
+
+    let signature = sign_manifest_for_tests(r#"{"schema_version":1,"supported_keys":[]}"#);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":[],"signature_hex":"{}"}}"#,
+            signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let bin = env!("CARGO_BIN_EXE_codex_hud_cli");
+    let first = Command::new(bin)
+        .args(["run", "--stock-codex", stock.to_str().unwrap(), "--", "--version"])
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    assert!(first.status.success());
+    let first_stderr = String::from_utf8_lossy(&first.stderr);
+    assert!(first_stderr.contains("codex-hud is not yet compatible with"));
+
+    let second = Command::new(bin)
+        .args(["run", "--stock-codex", stock.to_str().unwrap(), "--", "--version"])
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    assert!(second.status.success());
+    let second_stderr = String::from_utf8_lossy(&second.stderr);
+    assert!(!second_stderr.contains("codex-hud is not yet compatible with"));
+}
