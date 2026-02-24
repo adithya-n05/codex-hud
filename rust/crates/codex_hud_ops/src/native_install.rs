@@ -1,6 +1,7 @@
 use crate::compat_refresh::refresh_compat_bundle;
 use crate::codex_probe::{
     detect_codex_path, detect_npm_package_root_from_codex_binary, probe_compatibility_key,
+    resolve_npm_vendor_binary_path_from_package_root,
 };
 use crate::native_patch::{apply_marker_replace, native_patch_targets};
 use crate::support_gate::{resolve_install_mode, InstallMode};
@@ -168,6 +169,35 @@ pub fn install_native_patch(
             Ok(InstallOutcome::Patched)
         }
     }
+}
+
+pub fn install_native_patch_using_cached_binary(
+    home: &Path,
+    stock_codex_path: &Path,
+    key: &str,
+) -> Result<InstallOutcome, String> {
+    let codex_root = detect_npm_package_root_from_codex_binary(stock_codex_path)
+        .ok_or_else(|| "native patch substrate unavailable for installed codex layout".to_string())?;
+
+    let vendor_binary = resolve_npm_vendor_binary_path_from_package_root(&codex_root)?;
+    if !vendor_binary.exists() {
+        return Err("npm vendor codex binary not found".to_string());
+    }
+
+    let cached = patched_binary_cache_path(home, key);
+    if !cached.exists() {
+        return Err(format!(
+            "patched native binary cache missing for compatibility key: {key}"
+        ));
+    }
+
+    let cached_bytes = std::fs::read(&cached).map_err(|e| e.to_string())?;
+    let existing_bytes = std::fs::read(&vendor_binary).map_err(|e| e.to_string())?;
+    if existing_bytes != cached_bytes {
+        std::fs::write(&vendor_binary, &cached_bytes).map_err(|e| e.to_string())?;
+    }
+
+    Ok(InstallOutcome::Patched)
 }
 
 pub fn uninstall_native_patch(codex_root: &Path) -> Result<(), String> {

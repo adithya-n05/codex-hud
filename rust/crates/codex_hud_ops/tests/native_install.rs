@@ -1,6 +1,7 @@
 use codex_hud_ops::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
 use codex_hud_ops::native_install::{
     install_native_patch, install_native_patch_auto_for_stock_path, install_native_patch_auto_with,
+    install_native_patch_using_cached_binary,
     run_stock_codex_passthrough, run_stock_codex_passthrough_interactive, uninstall_native_patch,
     InstallOutcome,
 };
@@ -204,6 +205,42 @@ fn patched_binary_cache_path_is_compatibility_keyed() {
     let binary_name = if cfg!(windows) { "codex.exe" } else { "codex" };
     let expected_suffix = format!(".codex-hud/cache/patched/0.104.0+abc/{binary_name}");
     assert!(path.ends_with(expected_suffix));
+}
+
+#[test]
+fn install_replaces_vendor_binary_with_cached_patched_binary() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"stock-binary").unwrap();
+
+    let compat_key = "0.104.0+abc";
+    let cached = home
+        .join(".codex-hud/cache/patched")
+        .join(compat_key)
+        .join(if cfg!(windows) { "codex.exe" } else { "codex" });
+    std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+    std::fs::write(&cached, b"patched-binary").unwrap();
+
+    let out = install_native_patch_using_cached_binary(&home, &launcher, compat_key).unwrap();
+    assert_eq!(out, InstallOutcome::Patched);
+    assert_eq!(
+        std::fs::read(&vendor_binary).unwrap(),
+        std::fs::read(&cached).unwrap()
+    );
 }
 
 #[test]
