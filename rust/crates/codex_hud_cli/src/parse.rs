@@ -28,7 +28,10 @@ where
         "install" => Ok(Command::Install),
         "uninstall" => Ok(Command::Uninstall),
         "status" => {
-            if collected.get(2).map(|s| s.as_str()) == Some("details") {
+            if matches!(
+                collected.get(2).map(|s| s.as_str()),
+                Some("details") | Some("--details")
+            ) {
                 Ok(Command::StatusDetails)
             } else {
                 Ok(Command::Status)

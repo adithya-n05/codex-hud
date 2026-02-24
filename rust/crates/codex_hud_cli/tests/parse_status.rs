@@ -13,6 +13,12 @@ fn parse_status_details_command() {
 }
 
 #[test]
+fn parse_status_details_flag_command() {
+    let cmd = parse_args(["codex-hud", "status", "--details"]).unwrap();
+    assert_eq!(cmd, Command::StatusDetails);
+}
+
+#[test]
 fn parse_run_command_with_stock_codex_and_passthrough() {
     let cmd = parse_args([
         "codex-hud",
