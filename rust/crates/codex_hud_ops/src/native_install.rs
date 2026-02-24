@@ -8,7 +8,6 @@ use crate::support_gate::{resolve_install_mode, InstallMode};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 const NPM_LAUNCHER_REL_PATH: &str = "bin/codex.js";
 const NPM_PATCH_MARKER: &str = "const env = { ...process.env, PATH: updatedPath };";
@@ -495,24 +494,9 @@ pub fn install_native_patch_auto_with(
     explicit_codex_path: Option<&Path>,
     compat_base_url: Option<&str>,
 ) -> Result<InstallOutcome, String> {
-    let profile_enabled = std::env::var("CODEX_HUD_PROFILE_STARTUP").ok().as_deref() == Some("1");
-    let started = Instant::now();
-    let mark = |label: &str| {
-        if profile_enabled {
-            eprintln!(
-                "codex-hud-profile {} +{}ms",
-                label,
-                started.elapsed().as_millis()
-            );
-        }
-    };
-
     let codex = detect_codex_path(explicit_codex_path, path_env)?;
-    mark("detect_codex_path");
     let key = probe_compatibility_key(Some(&codex), path_env)?;
-    mark("probe_compatibility_key");
     let is_npm_layout = detect_npm_package_root_from_codex_binary(&codex).is_some();
-    mark("detect_npm_layout");
     let compat_manifest = home.join(".codex-hud/compat/compat.json");
     let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
     let refresh_source = if compat_manifest.exists() && pubkey_path.exists() {
@@ -544,10 +528,8 @@ pub fn install_native_patch_auto_with(
             }
         }
     };
-    mark("compat_refresh_decision");
 
     persist_compat_metadata(home, &key, refresh_source)?;
-    mark("persist_compat_metadata");
 
     let codex_root = if let Some(root) = detect_npm_package_root_from_codex_binary(&codex) {
         root
@@ -562,7 +544,6 @@ pub fn install_native_patch_auto_with(
             }
         }
     };
-    mark("resolve_codex_root");
 
     if !compat_manifest.exists() || !pubkey_path.exists() {
         return Ok(InstallOutcome::RanStock {
@@ -578,10 +559,8 @@ pub fn install_native_patch_auto_with(
             })
         }
     };
-    mark("resolve_install_mode");
 
     if let InstallMode::RunStock { reason } = install_mode {
-        mark("run_stock_unsupported");
         return Ok(InstallOutcome::RanStock { reason });
     }
 
@@ -598,10 +577,8 @@ pub fn install_native_patch_auto_with(
                 codex.to_string_lossy().to_string(),
             )
             .map_err(|e| e.to_string())?;
-            mark("npm_quick_state_match");
             return Ok(InstallOutcome::Patched);
         }
-        mark("npm_quick_state_miss");
 
         let cached = patched_binary_cache_path(home, &key);
         if !cached.exists() {
@@ -621,10 +598,8 @@ pub fn install_native_patch_auto_with(
                 codex.to_string_lossy().to_string(),
             )
             .map_err(|e| e.to_string())?;
-            mark("npm_hash_state_match");
             return Ok(InstallOutcome::Patched);
         }
-        mark("npm_hash_state_miss");
     }
 
     let out = match install_native_patch(&codex_root, &key, &compat_manifest, public_key_hex.trim())
@@ -639,7 +614,6 @@ pub fn install_native_patch_auto_with(
 
     if out == InstallOutcome::Patched && is_npm_layout {
         install_native_patch_using_cached_binary(home, &codex, &key)?;
-        mark("install_cached_binary");
     }
 
     if out == InstallOutcome::Patched {
@@ -656,7 +630,6 @@ pub fn install_native_patch_auto_with(
         .map_err(|e| e.to_string())?;
     }
 
-    mark("done");
     Ok(out)
 }
 
