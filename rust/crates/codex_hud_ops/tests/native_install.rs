@@ -1,7 +1,11 @@
 use codex_hud_ops::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
 use codex_hud_ops::native_install::{
-    install_native_patch, run_stock_codex_passthrough, uninstall_native_patch, InstallOutcome,
+    install_native_patch, install_native_patch_auto_with, run_stock_codex_passthrough,
+    uninstall_native_patch, InstallOutcome,
 };
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::thread;
 use tempfile::tempdir;
 
 #[test]
@@ -258,4 +262,93 @@ env.CODEX_HUD_NATIVE_PATCH = "1";
     let restored = std::fs::read_to_string(root.join("bin/codex.js")).unwrap();
     assert!(!restored.contains("codex-hud-managed"));
     assert!(restored.contains("const env = { ...process.env, PATH: updatedPath };"));
+}
+
+#[test]
+fn install_auto_refreshes_compat_bundle_before_support_gate_resolution() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let bin = tmp.path().join("bin");
+    let root = tmp.path().join("codex-rs");
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::create_dir_all(&bin).unwrap();
+
+    let codex = if cfg!(windows) {
+        bin.join("codex.cmd")
+    } else {
+        bin.join("codex")
+    };
+    #[cfg(windows)]
+    std::fs::write(&codex, "@echo off\r\necho codex-cli 0.104.0\r\n").unwrap();
+    #[cfg(not(windows))]
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/chatwidget.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&codex), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+    let pubkey = test_public_key_hex_for_tests();
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let key_for_server = key.clone();
+    let server = thread::spawn(move || {
+        for _ in 0..2 {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let n = stream.read(&mut buf).unwrap();
+            let req = String::from_utf8_lossy(&buf[..n]);
+            let first = req.lines().next().unwrap_or("");
+            let (status, body) = if first.contains("GET /compat.json") {
+                (
+                    "200 OK",
+                    format!(
+                        r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+                        key_for_server, signature
+                    ),
+                )
+            } else if first.contains("GET /public_key.hex") {
+                ("200 OK", pubkey.clone())
+            } else {
+                ("404 Not Found", "missing".to_string())
+            };
+            let response = format!(
+                "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+        }
+    });
+
+    let outcome = install_native_patch_auto_with(
+        &home,
+        "",
+        Some(&codex),
+        Some(&format!("http://{addr}")),
+    )
+    .unwrap();
+    assert_eq!(outcome, InstallOutcome::Patched);
+
+    let downloaded =
+        std::fs::read_to_string(home.join(".codex-hud/compat/compat.json")).unwrap();
+    assert!(downloaded.contains(&key));
+    server.join().unwrap();
 }

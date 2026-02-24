@@ -1,3 +1,4 @@
+use crate::compat_refresh::refresh_compat_bundle;
 use crate::codex_probe::{detect_codex_path, probe_compatibility_key};
 use crate::native_patch::{apply_marker_replace, native_patch_targets};
 use crate::support_gate::{resolve_install_mode, InstallMode};
@@ -215,8 +216,27 @@ fn discover_source_root_from_codex_binary(codex_path: &Path) -> Option<PathBuf> 
 }
 
 pub fn install_native_patch_auto(home: &Path, path_env: &str) -> Result<InstallOutcome, String> {
-    let codex = detect_codex_path(None, path_env)?;
+    install_native_patch_auto_with(home, path_env, None, None)
+}
+
+pub fn install_native_patch_auto_with(
+    home: &Path,
+    path_env: &str,
+    explicit_codex_path: Option<&Path>,
+    compat_base_url: Option<&str>,
+) -> Result<InstallOutcome, String> {
+    let codex = detect_codex_path(explicit_codex_path, path_env)?;
     let key = probe_compatibility_key(Some(&codex), path_env)?;
+    let compat_manifest = home.join(".codex-hud/compat/compat.json");
+    let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
+
+    if let Err(err) = refresh_compat_bundle(home, compat_base_url) {
+        if !compat_manifest.exists() || !pubkey_path.exists() {
+            return Ok(InstallOutcome::RanStock {
+                reason: format!("compatibility bundle refresh failed: {err}"),
+            });
+        }
+    }
 
     let codex_root = match discover_source_root_from_codex_binary(&codex) {
         Some(root) => root,
@@ -227,8 +247,6 @@ pub fn install_native_patch_auto(home: &Path, path_env: &str) -> Result<InstallO
         }
     };
 
-    let compat_manifest = home.join(".codex-hud/compat/compat.json");
-    let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
     if !compat_manifest.exists() || !pubkey_path.exists() {
         return Ok(InstallOutcome::RanStock {
             reason: "compatibility bundle unavailable".to_string(),
