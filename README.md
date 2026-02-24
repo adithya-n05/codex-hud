@@ -29,6 +29,14 @@ Performance priorities in this repository:
 
 As releases mature, reproducible benchmark data will be published for supported platforms.
 
+## HUD Feature Bucket
+
+- Two-line HUD model with wrap on narrow terminals.
+- CTX / 5H / 7D usage bars with threshold-aware coloring.
+- Tool counters with optional per-type activity breakdown.
+- Auth, permission, provider, model, and repo/branch chips.
+- Time-to-reset metrics for 5-hour and 7-day windows (countdown style).
+
 ## Real Local End-to-End Check With Existing Codex
 
 1. Confirm Codex is reachable: `codex --version`
