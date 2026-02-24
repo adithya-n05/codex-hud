@@ -150,3 +150,65 @@ fn run_route_emits_unsupported_notice_once_per_compat_key() {
     let second_stderr = String::from_utf8_lossy(&second.stderr);
     assert!(!second_stderr.contains("codex-hud is not yet compatible with"));
 }
+
+#[test]
+fn run_route_records_last_policy_outcome_for_status_surfaces() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let stock = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(stock.parent().unwrap()).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &stock,
+        r#"#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("codex-cli 0.104.0");
+  process.exit(0);
+}
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+console.log(env.PATH);
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&stock).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&stock, perms).unwrap();
+    }
+
+    let signature = sign_manifest_for_tests(r#"{"schema_version":1,"supported_keys":[]}"#);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":[],"signature_hex":"{}"}}"#,
+            signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let bin = env!("CARGO_BIN_EXE_codex_hud_cli");
+    let out = Command::new(bin)
+        .args(["run", "--stock-codex", stock.to_str().unwrap(), "--", "--version"])
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+
+    let policy = std::fs::read_to_string(home.join(".codex-hud/last_run_policy.txt")).unwrap();
+    assert!(policy.contains("mode=stock"));
+    assert!(policy.contains("unsupported compatibility key"));
+}
