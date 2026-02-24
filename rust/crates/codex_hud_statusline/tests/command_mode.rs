@@ -18,3 +18,15 @@ fn hud_alias_is_not_available_in_v1() {
     let err = parse_statusline_command("/hud", []).unwrap_err();
     assert!(err.contains("Use `/statusline`"));
 }
+
+#[test]
+fn valid_statusline_command_runs_interactive_invocation() {
+    let action = parse_statusline_command("/statusline", []).unwrap();
+    assert_eq!(action, StatuslineAction::OpenInteractiveUi);
+}
+
+#[test]
+fn unknown_statusline_command_is_rejected() {
+    let err = parse_statusline_command("/not-a-command", []).unwrap_err();
+    assert!(err.contains("unknown statusline command"));
+}
