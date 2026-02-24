@@ -74,6 +74,61 @@ fn probes_compatibility_key_from_codex_binary() {
 }
 
 #[test]
+fn probe_key_ignores_codex_hud_managed_patch_block() {
+    let tmp = tempdir().unwrap();
+    let codex = if cfg!(windows) {
+        tmp.path().join("codex.cmd")
+    } else {
+        tmp.path().join("codex")
+    };
+
+    #[cfg(windows)]
+    std::fs::write(
+        &codex,
+        "@echo off\r\nif \"%1\"==\"--version\" echo codex-cli 0.104.0\r\n",
+    )
+    .unwrap();
+    #[cfg(not(windows))]
+    std::fs::write(
+        &codex,
+        "#!/usr/bin/env sh\nif [ \"$1\" = \"--version\" ]; then\necho codex-cli 0.104.0\nfi\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut p = std::fs::metadata(&codex).unwrap().permissions();
+        p.set_mode(0o755);
+        std::fs::set_permissions(&codex, p).unwrap();
+    }
+
+    let key_before = probe_compatibility_key(Some(&codex), "").unwrap();
+
+    #[cfg(windows)]
+    std::fs::write(
+        &codex,
+        "@echo off\r\n/* codex-hud-managed:start */\r\nset CODEX_HUD_NATIVE_PATCH=1\r\n/* codex-hud-managed:end */\r\nif \"%1\"==\"--version\" echo codex-cli 0.104.0\r\n",
+    )
+    .unwrap();
+    #[cfg(not(windows))]
+    std::fs::write(
+        &codex,
+        "#!/usr/bin/env sh\n/* codex-hud-managed:start */\nexport CODEX_HUD_NATIVE_PATCH=1\n/* codex-hud-managed:end */\nif [ \"$1\" = \"--version\" ]; then\necho codex-cli 0.104.0\nfi\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut p = std::fs::metadata(&codex).unwrap().permissions();
+        p.set_mode(0o755);
+        std::fs::set_permissions(&codex, p).unwrap();
+    }
+
+    let key_after = probe_compatibility_key(Some(&codex), "").unwrap();
+    assert_eq!(key_before, key_after);
+}
+
+#[test]
 fn detects_npm_package_root_from_real_codex_launcher_path() {
     let tmp = tempdir().unwrap();
     let root = tmp.path().join("lib/node_modules/@openai/codex");

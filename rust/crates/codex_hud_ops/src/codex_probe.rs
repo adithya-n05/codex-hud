@@ -15,6 +15,37 @@ fn codex_package_root(candidate: &Path) -> Option<PathBuf> {
     }
 }
 
+fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() || haystack.len() < needle.len() {
+        return None;
+    }
+    haystack.windows(needle.len()).position(|window| window == needle)
+}
+
+fn strip_managed_patch_block(bytes: &[u8]) -> Vec<u8> {
+    const START: &[u8] = b"/* codex-hud-managed:start */";
+    const END: &[u8] = b"/* codex-hud-managed:end */";
+
+    let Some(start) = find_subslice(bytes, START) else {
+        return bytes.to_vec();
+    };
+    let Some(end_rel) = find_subslice(&bytes[start..], END) else {
+        return bytes.to_vec();
+    };
+    let end = start + end_rel + END.len();
+
+    let mut out = Vec::with_capacity(bytes.len());
+    out.extend_from_slice(&bytes[..start]);
+    let mut tail = &bytes[end..];
+    if tail.starts_with(b"\r\n") {
+        tail = &tail[2..];
+    } else if tail.starts_with(b"\n") {
+        tail = &tail[1..];
+    }
+    out.extend_from_slice(tail);
+    out
+}
+
 fn is_codex_hud_managed_shim(candidate: &Path) -> bool {
     let Some(stem) = candidate.file_stem().and_then(|v| v.to_str()) else {
         return false;
@@ -90,8 +121,9 @@ pub fn detect_npm_package_root_from_codex_binary(codex_path: &Path) -> Option<Pa
 
 pub fn file_sha256_hex(path: &Path) -> Result<String, String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let normalized = strip_managed_patch_block(&bytes);
     let mut hasher = Sha256::new();
-    hasher.update(bytes);
+    hasher.update(normalized);
     Ok(format!("{:x}", hasher.finalize()))
 }
 
