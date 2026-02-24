@@ -206,3 +206,18 @@ status_line = [
     assert!(updated.contains("\"auth-chip\""));
     assert!(updated.contains("\"tool-calls\""));
 }
+
+#[test]
+fn creates_tui_section_when_missing() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(codex_dir.join("config.toml"), "model = \"gpt-5\"").unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(changed);
+    let updated = std::fs::read_to_string(codex_dir.join("config.toml")).unwrap();
+    assert!(updated.contains("[tui]"));
+    assert!(updated.contains("\"permission-mode\""));
+}

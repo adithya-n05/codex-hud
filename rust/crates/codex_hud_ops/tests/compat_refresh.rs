@@ -104,3 +104,33 @@ fn refresh_fails_when_manifest_download_returns_non_success_status() {
 
     server.join().unwrap();
 }
+
+#[test]
+fn refresh_fails_when_public_key_download_returns_non_success_status() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let server = thread::spawn(move || {
+        for i in 0..2 {
+            let (mut stream, _) = listener.accept().unwrap();
+            let body = if i == 0 {
+                "{\"schema_version\":1,\"supported_keys\":[],\"signature_hex\":\"00\"}\n"
+            } else {
+                "missing\n"
+            };
+            let status = if i == 0 { "200 OK" } else { "404 Not Found" };
+            let resp = format!(
+                "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            stream.write_all(resp.as_bytes()).unwrap();
+        }
+    });
+
+    let tmp = tempdir().unwrap();
+    let base = format!("http://{addr}");
+    let err = refresh_compat_bundle(tmp.path(), Some(&base)).unwrap_err();
+
+    assert!(err.contains("/public_key.hex"));
+    server.join().unwrap();
+}

@@ -270,3 +270,31 @@ fn file_sha256_ignores_managed_patch_with_crlf_tail_separator() {
     let patched_sha = file_sha256_hex(&patched).unwrap();
     assert_eq!(base_sha, patched_sha);
 }
+
+#[test]
+fn parse_codex_version_line_rejects_empty_input() {
+    assert_eq!(parse_codex_version_line(""), None);
+}
+
+#[test]
+fn file_sha256_errors_for_missing_file() {
+    let tmp = tempdir().unwrap();
+    let err = file_sha256_hex(&tmp.path().join("missing")).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn probe_compatibility_key_fails_when_version_output_is_unparseable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let codex = tmp.path().join("codex");
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho invalid\n").unwrap();
+    let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&codex, perms).unwrap();
+
+    let err = probe_compatibility_key(Some(&codex), "").unwrap_err();
+    assert!(err.contains("unable to parse codex version"));
+}

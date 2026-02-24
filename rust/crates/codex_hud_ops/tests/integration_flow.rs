@@ -137,3 +137,46 @@ fn status_details_reads_existing_rc_file_without_block() {
     assert!(out.contains("rc_block_present: false"));
     assert!(out.contains("compatible: true"));
 }
+
+#[test]
+fn integration_exec_shim_errors_when_shim_is_missing() {
+    let tmp = tempdir().unwrap();
+    let err = integration_exec_shim(tmp.path(), &["--version"]).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn status_reads_policy_and_compat_files_with_trimming() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        home.join(".codex-hud/last_run_policy.txt"),
+        "mode=patched\nreason=ok\n",
+    )
+    .unwrap();
+    std::fs::write(home.join(".codex-hud/compat/last_compat_key.txt"), " key \n").unwrap();
+    std::fs::write(home.join(".codex-hud/compat/refresh_source.txt"), " source \n").unwrap();
+
+    let out = integration_status(home).unwrap();
+    assert!(out.contains("patch_mode: patched"));
+    assert!(out.contains("compat_key: key"));
+    assert!(out.contains("refresh_source: source"));
+}
+
+#[test]
+fn uninstall_removes_managed_rc_block_when_present() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path();
+    std::fs::create_dir_all(home.join(".codex-hud/bin")).unwrap();
+    std::fs::write(home.join(".codex-hud/bin/codex"), "shim").unwrap();
+    std::fs::write(
+        home.join(".zshrc"),
+        "# before\n# BEGIN CODEX HUD MANAGED BLOCK\nexport PATH=\"/tmp\"\n# END CODEX HUD MANAGED BLOCK\n# after\n",
+    )
+    .unwrap();
+
+    integration_uninstall(home).unwrap();
+    let rc = std::fs::read_to_string(home.join(".zshrc")).unwrap();
+    assert!(!rc.contains("BEGIN CODEX HUD MANAGED BLOCK"));
+}
