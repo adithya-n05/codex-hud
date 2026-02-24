@@ -461,6 +461,14 @@ console.log(env.PATH);
     }
 
     let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"stock").unwrap();
+    let cache_path = codex_hud_ops::native_install::patched_binary_cache_path_for_test(&home, &key);
+    std::fs::create_dir_all(cache_path.parent().unwrap()).unwrap();
+    std::fs::write(&cache_path, b"patched").unwrap();
     let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
     let signature = sign_manifest_for_tests(&payload);
     std::fs::write(
@@ -552,6 +560,74 @@ console.log(env.PATH);
 }
 
 #[test]
+fn install_auto_requires_cached_patched_binary_for_npm_layout() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &launcher,
+        r#"#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("codex-cli 0.104.0");
+  process.exit(0);
+}
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+console.log(env.PATH);
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&launcher).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&launcher, perms).unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"stock").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+            key, signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let out = install_native_patch_auto_with(&home, "", Some(&launcher), None).unwrap();
+    assert_eq!(
+        out,
+        InstallOutcome::RanStock {
+            reason: "patched native binary cache missing for compatibility key".to_string(),
+        }
+    );
+    let unchanged = std::fs::read_to_string(&launcher).unwrap();
+    assert!(!unchanged.contains("codex-hud-managed"));
+}
+
+#[test]
 fn install_auto_persists_compat_metadata_for_status_surfaces() {
     let tmp = tempdir().unwrap();
     let home = tmp.path().join("home");
@@ -587,6 +663,14 @@ console.log(env.PATH);
     }
 
     let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"stock").unwrap();
+    let cache_path = codex_hud_ops::native_install::patched_binary_cache_path_for_test(&home, &key);
+    std::fs::create_dir_all(cache_path.parent().unwrap()).unwrap();
+    std::fs::write(&cache_path, b"patched").unwrap();
     let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
     let signature = sign_manifest_for_tests(&payload);
     std::fs::write(
@@ -674,6 +758,14 @@ console.log(env.PATH);
     }
 
     let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"stock").unwrap();
+    let cache_path = codex_hud_ops::native_install::patched_binary_cache_path_for_test(&home, &key);
+    std::fs::create_dir_all(cache_path.parent().unwrap()).unwrap();
+    std::fs::write(&cache_path, b"patched").unwrap();
     let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
     let signature = sign_manifest_for_tests(&payload);
     std::fs::write(

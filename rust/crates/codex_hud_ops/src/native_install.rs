@@ -86,6 +86,52 @@ fn strip_managed_patch_block(value: &str) -> String {
     value.to_string()
 }
 
+fn is_macho_binary(bytes: &[u8]) -> bool {
+    if bytes.len() < 4 {
+        return false;
+    }
+    let magic = [bytes[0], bytes[1], bytes[2], bytes[3]];
+    matches!(
+        magic,
+        [0xfe, 0xed, 0xfa, 0xce]
+            | [0xce, 0xfa, 0xed, 0xfe]
+            | [0xfe, 0xed, 0xfa, 0xcf]
+            | [0xcf, 0xfa, 0xed, 0xfe]
+            | [0xca, 0xfe, 0xba, 0xbe]
+            | [0xbe, 0xba, 0xfe, 0xca]
+            | [0xca, 0xfe, 0xba, 0xbf]
+            | [0xbf, 0xba, 0xfe, 0xca]
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn ad_hoc_codesign_if_needed(binary_path: &Path, bytes: &[u8]) -> Result<(), String> {
+    if !is_macho_binary(bytes) {
+        return Ok(());
+    }
+    let status = std::process::Command::new("codesign")
+        .args(["--force", "--sign", "-"])
+        .arg(binary_path)
+        .status()
+        .map_err(|e| format!("failed to invoke codesign: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "codesign failed with status {}",
+            status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "signal".to_string())
+        ))
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn ad_hoc_codesign_if_needed(_binary_path: &Path, _bytes: &[u8]) -> Result<(), String> {
+    Ok(())
+}
+
 pub fn install_native_patch(
     codex_root: &Path,
     key: &str,
@@ -205,6 +251,7 @@ pub fn install_native_patch_using_cached_binary(
     let existing_bytes = std::fs::read(&vendor_binary).map_err(|e| e.to_string())?;
     if existing_bytes != cached_bytes {
         std::fs::write(&vendor_binary, &cached_bytes).map_err(|e| e.to_string())?;
+        ad_hoc_codesign_if_needed(&vendor_binary, &cached_bytes)?;
     }
 
     Ok(InstallOutcome::Patched)
@@ -343,6 +390,15 @@ pub fn install_native_patch_auto_with(
         }
     };
 
+    if detect_npm_package_root_from_codex_binary(&codex).is_some() {
+        let cached = patched_binary_cache_path(home, &key);
+        if !cached.exists() {
+            return Ok(InstallOutcome::RanStock {
+                reason: "patched native binary cache missing for compatibility key".to_string(),
+            });
+        }
+    }
+
     if !compat_manifest.exists() || !pubkey_path.exists() {
         return Ok(InstallOutcome::RanStock {
             reason: "compatibility bundle unavailable".to_string(),
@@ -360,13 +416,9 @@ pub fn install_native_patch_auto_with(
         }
     };
 
-    if out == InstallOutcome::Patched
-        && detect_npm_package_root_from_codex_binary(&codex).is_some()
+    if out == InstallOutcome::Patched && detect_npm_package_root_from_codex_binary(&codex).is_some()
     {
-        let cached = patched_binary_cache_path(home, &key);
-        if cached.exists() {
-            install_native_patch_using_cached_binary(home, &codex, &key)?;
-        }
+        install_native_patch_using_cached_binary(home, &codex, &key)?;
     }
 
     if out == InstallOutcome::Patched {
@@ -402,4 +454,19 @@ pub fn uninstall_native_patch_auto(home: &Path) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_macho_binary;
+
+    #[test]
+    fn macho_detection_matches_known_magic_values() {
+        assert!(is_macho_binary(&[0xfe, 0xed, 0xfa, 0xcf]));
+        assert!(is_macho_binary(&[0xcf, 0xfa, 0xed, 0xfe]));
+        assert!(is_macho_binary(&[0xca, 0xfe, 0xba, 0xbe]));
+        assert!(is_macho_binary(&[0xbe, 0xba, 0xfe, 0xca]));
+        assert!(!is_macho_binary(&[0x00, 0x00, 0x00, 0x00]));
+        assert!(!is_macho_binary(&[0x7f, 0x45, 0x4c, 0x46]));
+    }
 }
