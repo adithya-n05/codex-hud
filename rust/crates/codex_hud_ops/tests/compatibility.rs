@@ -13,3 +13,9 @@ fn support_requires_exact_match() {
     assert!(is_supported_exact("0.94.0+abc123", &supported));
     assert!(!is_supported_exact("0.94.0+zzz999", &supported));
 }
+
+#[test]
+fn supported_key_runs_patched_codex() {
+    let mode = resolve_launch_mode("0.94.0+abc", &["0.94.0+abc".to_string()]);
+    assert_eq!(mode, "patched_codex");
+}

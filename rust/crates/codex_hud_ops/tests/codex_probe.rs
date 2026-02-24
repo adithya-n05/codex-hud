@@ -1,6 +1,7 @@
 use codex_hud_ops::codex_probe::{
     detect_codex_path, detect_npm_package_root_from_codex_binary, file_sha256_hex,
-    probe_compatibility_key, resolve_npm_vendor_binary_path_from_package_root,
+    parse_codex_version_line, probe_compatibility_key,
+    resolve_npm_vendor_binary_path_from_package_root,
 };
 use tempfile::tempdir;
 
@@ -183,4 +184,89 @@ fn resolves_npm_vendor_binary_path_from_package_root() {
     assert!(resolved.ends_with(
         "node_modules\\@openai\\codex-win32-arm64\\vendor\\aarch64-pc-windows-msvc\\codex\\codex.exe"
     ));
+}
+
+#[test]
+fn detect_codex_path_ignores_missing_explicit_and_uses_path_search() {
+    let tmp = tempdir().unwrap();
+    let missing_explicit = tmp.path().join("does-not-exist-codex");
+    let bin_dir = tmp.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    let exe_name = if cfg!(windows) { "codex.exe" } else { "codex" };
+    let discovered = bin_dir.join(exe_name);
+    std::fs::write(&discovered, "stub").unwrap();
+
+    let joined = std::env::join_paths([bin_dir.as_path()]).unwrap();
+    let found =
+        detect_codex_path(Some(&missing_explicit), &joined.to_string_lossy()).unwrap();
+    assert_eq!(found, discovered);
+}
+
+#[test]
+fn detect_codex_path_errors_when_no_candidate_is_available() {
+    let tmp = tempdir().unwrap();
+    let missing_explicit = tmp.path().join("missing-codex");
+    let err = detect_codex_path(Some(&missing_explicit), "").unwrap_err();
+    assert!(err.contains("Codex binary not found"));
+}
+
+#[test]
+fn parse_codex_version_line_accepts_v_prefix_and_rejects_invalid_shape() {
+    assert_eq!(
+        parse_codex_version_line("codex-cli v0.104.0"),
+        Some("0.104.0".to_string())
+    );
+    assert_eq!(parse_codex_version_line("codex-cli"), None);
+}
+
+#[test]
+fn detect_npm_package_root_returns_none_for_non_codex_package() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("lib/node_modules/not-codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"example/not-codex","version":"1.0.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let detected = detect_npm_package_root_from_codex_binary(&launcher);
+    assert!(detected.is_none());
+}
+
+#[test]
+fn file_sha256_tolerates_unclosed_managed_patch_markers() {
+    let tmp = tempdir().unwrap();
+    let codex = tmp.path().join("codex");
+    std::fs::write(
+        &codex,
+        "#!/usr/bin/env sh\n/* codex-hud-managed:start */\necho codex-cli 0.104.0\n",
+    )
+    .unwrap();
+
+    let sha = file_sha256_hex(&codex).unwrap();
+    assert_eq!(sha.len(), 64);
+}
+
+#[test]
+fn file_sha256_ignores_managed_patch_with_crlf_tail_separator() {
+    let tmp = tempdir().unwrap();
+    let base = tmp.path().join("base-codex");
+    let patched = tmp.path().join("patched-codex");
+    let body = "#!/usr/bin/env sh\necho codex-cli 0.104.0\n";
+
+    std::fs::write(&base, body).unwrap();
+    std::fs::write(
+        &patched,
+        format!(
+            "/* codex-hud-managed:start */\r\nset -e\r\n/* codex-hud-managed:end */\r\n{body}"
+        ),
+    )
+    .unwrap();
+
+    let base_sha = file_sha256_hex(&base).unwrap();
+    let patched_sha = file_sha256_hex(&patched).unwrap();
+    assert_eq!(base_sha, patched_sha);
 }

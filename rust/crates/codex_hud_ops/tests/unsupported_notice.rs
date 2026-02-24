@@ -22,3 +22,10 @@ fn unsupported_notice_includes_support_check_action() {
 fn unsupported_notice_has_no_manual_reshow_control() {
     assert!(!manual_unsupported_notice_reshow_available());
 }
+
+#[test]
+fn unsupported_notice_surfaces_state_file_read_errors() {
+    let dir = tempfile::tempdir().unwrap();
+    let err = should_show_unsupported_notice("0.95.0+zzz", dir.path()).unwrap_err();
+    assert!(!err.is_empty());
+}
