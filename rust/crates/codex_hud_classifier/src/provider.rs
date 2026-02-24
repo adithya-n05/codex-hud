@@ -22,3 +22,51 @@ pub fn detect_provider_from_model_name(model_name: Option<&str>) -> Option<Strin
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_provider_from_endpoint_matches_bedrock_runtime() {
+        assert_eq!(
+            detect_provider_from_endpoint(Some("https://bedrock-runtime.us-east-1.amazonaws.com/")),
+            Some("AWS Bedrock".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_provider_from_endpoint_returns_none_for_unmatched_url() {
+        assert_eq!(detect_provider_from_endpoint(Some("https://example.com/api")), None);
+        assert_eq!(detect_provider_from_endpoint(None), None);
+    }
+
+    #[test]
+    fn detect_provider_from_endpoint_matches_bedrock_mantle() {
+        assert_eq!(
+            detect_provider_from_endpoint(Some("https://bedrock-mantle.us-west-2.api.aws/openai/v1")),
+            Some("AWS Bedrock".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_provider_from_model_name_covers_known_clouds() {
+        assert_eq!(
+            detect_provider_from_model_name(Some("anthropic.claude-3-sonnet-20240229-bedrock")),
+            Some("AWS Bedrock".to_string())
+        );
+        assert_eq!(
+            detect_provider_from_model_name(Some("vertex-gemini-2.0-flash")),
+            Some("GCP Vertex".to_string())
+        );
+        assert_eq!(
+            detect_provider_from_model_name(Some("gpt-4o-mini-azure-preview")),
+            Some("Azure OpenAI".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_provider_from_model_name_returns_none_for_unknown() {
+        assert_eq!(detect_provider_from_model_name(Some("gpt-4.0")), None);
+    }
+}
