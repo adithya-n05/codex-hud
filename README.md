@@ -1,10 +1,10 @@
 # Codex HUD
 
-[![GitHub stars](https://img.shields.io/github/stars/adithya-n05/codex-hud?style=social)](https://github.com/adithya-n05/codex-hud/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/adithya-n05/codex-hud?style=social)](https://github.com/adithya-n05/codex-hud/network/members)
-[![Contributors](https://img.shields.io/github/contributors/adithya-n05/codex-hud)](https://github.com/adithya-n05/codex-hud/graphs/contributors)
-[![Last commit](https://img.shields.io/github/last-commit/adithya-n05/codex-hud)](https://github.com/adithya-n05/codex-hud/commits/main)
-[![License](https://img.shields.io/github/license/adithya-n05/codex-hud)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/adithya-n05/codex-hud?label=stars&cacheSeconds=300)](https://github.com/adithya-n05/codex-hud/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/adithya-n05/codex-hud?label=forks&cacheSeconds=300)](https://github.com/adithya-n05/codex-hud/network/members)
+[![Contributors](https://img.shields.io/github/contributors/adithya-n05/codex-hud?cacheSeconds=300)](https://github.com/adithya-n05/codex-hud/graphs/contributors)
+[![Last commit](https://img.shields.io/github/last-commit/adithya-n05/codex-hud/main?cacheSeconds=300)](https://github.com/adithya-n05/codex-hud/commits/main)
+[![License](https://img.shields.io/github/license/adithya-n05/codex-hud?cacheSeconds=300)](LICENSE)
 [![npm downloads](https://img.shields.io/badge/npm%20downloads-pending%20publish-lightgrey)](https://www.npmjs.com/package/codex-hud)
 
 ## Install
