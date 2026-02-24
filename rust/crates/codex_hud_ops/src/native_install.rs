@@ -531,12 +531,23 @@ pub fn install_native_patch_auto_with(
 
     persist_compat_metadata(home, &key, refresh_source)?;
 
+    if !compat_manifest.exists() || !pubkey_path.exists() {
+        return Ok(InstallOutcome::RanStock {
+            reason: "compatibility bundle unavailable".to_string(),
+        });
+    }
+
     let codex_root = if let Some(root) = detect_npm_package_root_from_codex_binary(&codex) {
         root
     } else {
         match discover_source_root_from_codex_binary(&codex) {
             Some(root) => root,
             None => {
+                if !compat_manifest.exists() || !pubkey_path.exists() {
+                    return Ok(InstallOutcome::RanStock {
+                        reason: "compatibility bundle unavailable".to_string(),
+                    });
+                }
                 return Ok(InstallOutcome::RanStock {
                     reason: "native patch substrate unavailable for installed codex layout"
                         .to_string(),
@@ -545,15 +556,28 @@ pub fn install_native_patch_auto_with(
         }
     };
 
-    if !compat_manifest.exists() || !pubkey_path.exists() {
-        return Ok(InstallOutcome::RanStock {
-            reason: "compatibility bundle unavailable".to_string(),
-        });
-    }
-    let public_key_hex = std::fs::read_to_string(pubkey_path).map_err(|e| e.to_string())?;
+    let public_key_hex = match std::fs::read_to_string(&pubkey_path) {
+        Ok(v) => v,
+        Err(err) => {
+            if err.kind() == std::io::ErrorKind::NotFound
+                || !compat_manifest.exists()
+                || !pubkey_path.exists()
+            {
+                return Ok(InstallOutcome::RanStock {
+                    reason: "compatibility bundle unavailable".to_string(),
+                });
+            }
+            return Err(err.to_string());
+        }
+    };
     let install_mode = match resolve_install_mode(&compat_manifest, &key, public_key_hex.trim()) {
         Ok(v) => v,
         Err(err) => {
+            if !compat_manifest.exists() || !pubkey_path.exists() {
+                return Ok(InstallOutcome::RanStock {
+                    reason: "compatibility bundle unavailable".to_string(),
+                });
+            }
             return Ok(InstallOutcome::RanStock {
                 reason: format!("compatibility gate rejected patch: {err}"),
             })
@@ -606,6 +630,11 @@ pub fn install_native_patch_auto_with(
     {
         Ok(v) => v,
         Err(err) => {
+            if !compat_manifest.exists() || !pubkey_path.exists() {
+                return Ok(InstallOutcome::RanStock {
+                    reason: "compatibility bundle unavailable".to_string(),
+                });
+            }
             return Ok(InstallOutcome::RanStock {
                 reason: format!("compatibility gate rejected patch: {err}"),
             })
