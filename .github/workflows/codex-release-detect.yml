@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-      - run: npm ci
+      - run: npm install
       - id: detect
         shell: bash
         run: |
