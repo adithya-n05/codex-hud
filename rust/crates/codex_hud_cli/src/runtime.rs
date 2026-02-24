@@ -2,8 +2,8 @@ use crate::dispatch::CommandHandlers;
 use codex_hud_ops::codex_probe::detect_codex_path;
 use codex_hud_ops::integration_flow::{integration_install, integration_status, integration_status_details};
 use codex_hud_ops::native_install::{
-    install_native_patch_auto, run_stock_codex_passthrough, uninstall_native_patch_auto,
-    InstallOutcome,
+    install_native_patch_auto, install_native_patch_auto_for_stock_path, InstallOutcome,
+    run_stock_codex_passthrough, uninstall_native_patch_auto,
 };
 use std::path::{Path, PathBuf};
 
@@ -49,6 +49,13 @@ impl CommandHandlers for RealHandlers {
         stock_codex_path: &str,
         passthrough_args: &[String],
     ) -> Result<String, String> {
+        let home = user_home()?;
+        let path_env = std::env::var("PATH").unwrap_or_default();
+        let _ = install_native_patch_auto_for_stock_path(
+            &home,
+            &path_env,
+            Path::new(stock_codex_path),
+        );
         let out = run_stock_codex_passthrough(Path::new(stock_codex_path), passthrough_args)?;
         if out.status_code != 0 {
             return Err(format!("stock codex exited with {}", out.status_code));
