@@ -115,3 +115,25 @@ fn uninstall_succeeds_when_rc_file_is_missing() {
     integration_uninstall(home).unwrap();
     assert!(!home.join(".codex-hud").exists());
 }
+
+#[test]
+fn install_creates_rc_file_when_missing() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path();
+    let stock = home.join("stock-codex");
+    std::fs::write(&stock, "#!/usr/bin/env sh\necho stock\n").unwrap();
+
+    integration_install(home, stock.to_string_lossy().as_ref()).unwrap();
+    assert!(home.join(".zshrc").exists());
+}
+
+#[test]
+fn status_details_reads_existing_rc_file_without_block() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path();
+    std::fs::write(home.join(".zshrc"), "# user config\n").unwrap();
+
+    let out = integration_status_details(home).unwrap();
+    assert!(out.contains("rc_block_present: false"));
+    assert!(out.contains("compatible: true"));
+}

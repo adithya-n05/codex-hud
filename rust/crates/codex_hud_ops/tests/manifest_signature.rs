@@ -58,3 +58,14 @@ fn verify_with_public_key_rejects_invalid_signature_hex_and_length() {
     ));
     assert!(!verify_manifest_signature_with_public_key("manifest", "00", &pubkey));
 }
+
+#[test]
+fn verify_with_public_key_rejects_invalid_32_byte_public_key() {
+    let sig = sign_manifest_for_tests("manifest");
+    let invalid_but_sized_key = "00".repeat(32);
+    assert!(!verify_manifest_signature_with_public_key(
+        "manifest",
+        &sig,
+        &invalid_but_sized_key
+    ));
+}

@@ -653,7 +653,50 @@ pub fn uninstall_native_patch_auto(home: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::is_macho_binary;
+    use super::{
+        install_native_patch, install_native_patch_auto, install_native_patch_auto_with,
+        install_native_patch_using_cached_binary, is_macho_binary, is_npm_codex_root,
+        npm_launcher_has_managed_patch, npm_patch_state_matches, npm_patch_state_quick_matches,
+        patched_binary_cache_path, read_npm_patch_state, strip_managed_patch_block,
+        write_npm_patch_state, InstallOutcome,
+    };
+    use crate::codex_probe::{
+        probe_compatibility_key, resolve_npm_vendor_binary_path_from_package_root,
+    };
+    use crate::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
+    use sha2::{Digest, Sha256};
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::{Path, PathBuf};
+    use tempfile::tempdir;
+
+    fn sha256_hex_for_test(bytes: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn write_executable(path: &Path, body: &str) {
+        std::fs::write(path, body).unwrap();
+        #[cfg(unix)]
+        {
+            let mut perms = std::fs::metadata(path).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(path, perms).unwrap();
+        }
+    }
+
+    fn write_npm_layout(root: &Path, launcher_body: &str) -> PathBuf {
+        let launcher = root.join("bin/codex.js");
+        std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+        )
+        .unwrap();
+        write_executable(&launcher, launcher_body);
+        launcher
+    }
 
     #[test]
     fn macho_detection_matches_known_magic_values() {
@@ -661,7 +704,240 @@ mod tests {
         assert!(is_macho_binary(&[0xcf, 0xfa, 0xed, 0xfe]));
         assert!(is_macho_binary(&[0xca, 0xfe, 0xba, 0xbe]));
         assert!(is_macho_binary(&[0xbe, 0xba, 0xfe, 0xca]));
+        assert!(!is_macho_binary(&[0x00, 0x00, 0x00]));
         assert!(!is_macho_binary(&[0x00, 0x00, 0x00, 0x00]));
         assert!(!is_macho_binary(&[0x7f, 0x45, 0x4c, 0x46]));
+    }
+
+    #[test]
+    fn is_npm_codex_root_rejects_invalid_json() {
+        let tmp = tempdir().unwrap();
+        let root = tmp.path().join("npm-root");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("package.json"), "{").unwrap();
+        assert!(!is_npm_codex_root(&root));
+    }
+
+    #[test]
+    fn strip_managed_patch_block_returns_original_when_markers_missing() {
+        let text = "const env = { ...process.env, PATH: updatedPath };";
+        assert_eq!(strip_managed_patch_block(text), text);
+    }
+
+    #[test]
+    fn npm_patch_state_roundtrip_and_launcher_detection() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        assert!(read_npm_patch_state(&home).is_none());
+
+        write_npm_patch_state(&home, "0.104.0+abc", "vendor-sha", "cached-sha").unwrap();
+        let state = read_npm_patch_state(&home).unwrap();
+        assert_eq!(state.compatibility_key, "0.104.0+abc");
+        assert_eq!(state.vendor_sha256, "vendor-sha");
+        assert_eq!(state.cached_sha256.as_deref(), Some("cached-sha"));
+
+        let missing_launcher = home.join("missing/codex.js");
+        assert!(!npm_launcher_has_managed_patch(&missing_launcher));
+
+        let launcher = home.join("launcher/codex.js");
+        std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        std::fs::write(
+            &launcher,
+            "/* codex-hud-managed:start */\npatched\n/* codex-hud-managed:end */\n",
+        )
+        .unwrap();
+        assert!(npm_launcher_has_managed_patch(&launcher));
+    }
+
+    #[test]
+    fn npm_patch_state_matches_covers_missing_and_mismatch_paths() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let root = tmp.path().join("node_modules/@openai/codex");
+        write_npm_layout(
+            &root,
+            r#"#!/usr/bin/env node
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+/* codex-hud-managed:start */
+env.CODEX_HUD_NATIVE_PATCH = "1";
+/* codex-hud-managed:end */
+"#,
+        );
+
+        let key = "0.104.0+abc";
+        let vendor_binary = resolve_npm_vendor_binary_path_from_package_root(&root).unwrap();
+        std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+        std::fs::write(&vendor_binary, b"vendor-bytes").unwrap();
+
+        let cached = patched_binary_cache_path(&home, key);
+        std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+        std::fs::write(&cached, b"cached-bytes").unwrap();
+
+        assert!(!npm_patch_state_matches(&home, key, &root).unwrap());
+
+        write_npm_patch_state(&home, "other-key", "vendor", "cached").unwrap();
+        assert!(!npm_patch_state_matches(&home, key, &root).unwrap());
+
+        std::fs::remove_file(&vendor_binary).unwrap();
+        write_npm_patch_state(&home, key, "vendor", "cached").unwrap();
+        assert!(!npm_patch_state_matches(&home, key, &root).unwrap());
+
+        std::fs::write(&vendor_binary, b"vendor-bytes").unwrap();
+        write_npm_patch_state(&home, key, "wrong-vendor-sha", "cached").unwrap();
+        assert!(!npm_patch_state_matches(&home, key, &root).unwrap());
+
+        let vendor_sha = sha256_hex_for_test(&std::fs::read(&vendor_binary).unwrap());
+        std::fs::remove_file(&cached).unwrap();
+        write_npm_patch_state(&home, key, &vendor_sha, "cached").unwrap();
+        assert!(!npm_patch_state_matches(&home, key, &root).unwrap());
+
+        std::fs::write(&cached, b"cached-bytes").unwrap();
+        let cached_sha = sha256_hex_for_test(&std::fs::read(&cached).unwrap());
+        write_npm_patch_state(&home, key, &vendor_sha, &cached_sha).unwrap();
+        assert!(npm_patch_state_matches(&home, key, &root).unwrap());
+    }
+
+    #[test]
+    fn npm_patch_state_quick_matches_covers_guard_paths() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let root = tmp.path().join("node_modules/@openai/codex");
+        write_npm_layout(
+            &root,
+            r#"#!/usr/bin/env node
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+/* codex-hud-managed:start */
+env.CODEX_HUD_NATIVE_PATCH = "1";
+/* codex-hud-managed:end */
+"#,
+        );
+
+        let key = "0.104.0+abc";
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        let cached = patched_binary_cache_path(&home, key);
+        std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+        std::fs::write(&cached, b"cached-bytes").unwrap();
+
+        let vendor_binary = resolve_npm_vendor_binary_path_from_package_root(&root).unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        std::fs::create_dir_all(&vendor_binary).unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+        std::fs::remove_dir(&vendor_binary).unwrap();
+
+        std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+        std::fs::write(&vendor_binary, b"vendor-bytes").unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        write_npm_patch_state(&home, "other-key", "vendor", "cached").unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        write_npm_patch_state(&home, key, "", "cached").unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        write_npm_patch_state(&home, key, "vendor", "").unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        let vendor_sha = sha256_hex_for_test(&std::fs::read(&vendor_binary).unwrap());
+        let cached_sha = sha256_hex_for_test(&std::fs::read(&cached).unwrap());
+        write_npm_patch_state(&home, key, &vendor_sha, &cached_sha).unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        std::fs::create_dir_all(home.join(".codex-hud")).unwrap();
+        std::fs::write(home.join(".codex-hud/last_codex_root.txt"), "some/other/root").unwrap();
+        assert!(!npm_patch_state_quick_matches(&home, key, &root));
+
+        std::fs::write(
+            home.join(".codex-hud/last_codex_root.txt"),
+            root.to_string_lossy().to_string(),
+        )
+        .unwrap();
+        assert!(npm_patch_state_quick_matches(&home, key, &root));
+    }
+
+    #[test]
+    fn install_native_patch_returns_runstock_for_unsupported_key() {
+        let tmp = tempdir().unwrap();
+        let root = tmp.path().join("codex-rs");
+        std::fs::create_dir_all(&root).unwrap();
+
+        let payload = r#"{"schema_version":1,"supported_keys":["0.104.0+other"]}"#;
+        let sig = sign_manifest_for_tests(payload);
+        let manifest = root.join(".codex-hud-compat.json");
+        std::fs::write(
+            &manifest,
+            format!(
+                r#"{{"schema_version":1,"supported_keys":["0.104.0+other"],"signature_hex":"{}"}}"#,
+                sig
+            ),
+        )
+        .unwrap();
+
+        let out = install_native_patch(
+            &root,
+            "0.104.0+abc",
+            &manifest,
+            &test_public_key_hex_for_tests(),
+        )
+        .unwrap();
+        assert!(matches!(out, InstallOutcome::RanStock { .. }));
+    }
+
+    #[test]
+    fn install_native_patch_using_cached_binary_errors_when_cache_is_missing() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let root = tmp.path().join("node_modules/@openai/codex");
+        let launcher = write_npm_layout(&root, "#!/usr/bin/env node\n");
+
+        let vendor_binary = resolve_npm_vendor_binary_path_from_package_root(&root).unwrap();
+        std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+        std::fs::write(&vendor_binary, b"vendor").unwrap();
+
+        let err = install_native_patch_using_cached_binary(&home, &launcher, "0.104.0+abc")
+            .unwrap_err();
+        assert!(err.contains("patched native binary cache missing"));
+    }
+
+    #[test]
+    fn install_native_patch_auto_wrapper_propagates_codex_not_found() {
+        let tmp = tempdir().unwrap();
+        let err = install_native_patch_auto(tmp.path(), "").unwrap_err();
+        assert!(err.contains("Codex binary not found"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_native_patch_auto_reports_gate_rejection_for_invalid_public_key() {
+        let tmp = tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let root = tmp.path().join("node_modules/@openai/codex");
+        let launcher = write_npm_layout(
+            &root,
+            "#!/usr/bin/env sh\necho codex-cli 0.104.0\n",
+        );
+
+        let key = probe_compatibility_key(Some(&launcher), "").unwrap();
+        let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+        let sig = sign_manifest_for_tests(&payload);
+
+        std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+        std::fs::write(
+            home.join(".codex-hud/compat/compat.json"),
+            format!(
+                r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+                key, sig
+            ),
+        )
+        .unwrap();
+        std::fs::write(home.join(".codex-hud/compat/public_key.hex"), "00").unwrap();
+
+        let out =
+            install_native_patch_auto_with(&home, "", Some(&launcher), Some("http://127.0.0.1:1"))
+                .unwrap();
+        assert!(matches!(out, InstallOutcome::RanStock { reason } if reason.contains("compatibility gate rejected patch")));
     }
 }

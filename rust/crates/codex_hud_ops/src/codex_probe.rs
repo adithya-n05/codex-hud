@@ -181,3 +181,35 @@ pub fn probe_compatibility_key(explicit: Option<&Path>, path_env: &str) -> Resul
     let sha = file_sha256_hex(&codex)?;
     Ok(compatibility_key(&version, &sha))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{find_subslice, is_codex_hud_managed_shim};
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn find_subslice_handles_empty_and_oversized_needles() {
+        assert_eq!(find_subslice(b"abc", b""), None);
+        assert_eq!(find_subslice(b"ab", b"abc"), None);
+        assert_eq!(find_subslice(b"abc", b"bc"), Some(1));
+    }
+
+    #[test]
+    fn managed_shim_detector_requires_expected_path_shape() {
+        assert!(!is_codex_hud_managed_shim(Path::new("codex")));
+        assert!(!is_codex_hud_managed_shim(Path::new("tools/codex")));
+        assert!(!is_codex_hud_managed_shim(Path::new(".codex-hud/bin/not-codex")));
+        assert!(is_codex_hud_managed_shim(Path::new(".codex-hud/bin/codex")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn managed_shim_detector_rejects_non_utf8_stem() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+
+        let mut path = PathBuf::from(".codex-hud/bin");
+        path.push(OsString::from_vec(vec![0xff]));
+        assert!(!is_codex_hud_managed_shim(&path));
+    }
+}

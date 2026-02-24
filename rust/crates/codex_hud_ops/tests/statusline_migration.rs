@@ -179,3 +179,30 @@ fn non_table_tui_section_is_ignored() {
     let changed = ensure_hud_statusline_config(&home).unwrap();
     assert!(!changed);
 }
+
+#[test]
+fn status_line_without_hud_signals_is_replaced_with_hud_defaults() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(
+        codex_dir.join("config.toml"),
+        r#"
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "git-branch",
+]
+"#,
+    )
+    .unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(changed);
+
+    let updated = std::fs::read_to_string(codex_dir.join("config.toml")).unwrap();
+    assert!(updated.contains("\"permission-mode\""));
+    assert!(updated.contains("\"auth-chip\""));
+    assert!(updated.contains("\"tool-calls\""));
+}
