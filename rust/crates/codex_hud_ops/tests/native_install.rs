@@ -7,6 +7,7 @@ use codex_hud_ops::native_install::{
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
+use std::path::Path;
 use tempfile::tempdir;
 
 #[test]
@@ -192,6 +193,17 @@ fn passthrough_reports_nonzero_status_and_stderr() {
     let out = run_stock_codex_passthrough(&script, &[]).unwrap();
     assert_eq!(out.status_code, 11);
     assert_eq!(out.stderr, "ERR");
+}
+
+#[test]
+fn patched_binary_cache_path_is_compatibility_keyed() {
+    let path = codex_hud_ops::native_install::patched_binary_cache_path_for_test(
+        Path::new("/home/u"),
+        "0.104.0+abc",
+    );
+    let binary_name = if cfg!(windows) { "codex.exe" } else { "codex" };
+    let expected_suffix = format!(".codex-hud/cache/patched/0.104.0+abc/{binary_name}");
+    assert!(path.ends_with(expected_suffix));
 }
 
 #[test]

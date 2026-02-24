@@ -11,6 +11,17 @@ const NPM_LAUNCHER_REL_PATH: &str = "bin/codex.js";
 const NPM_PATCH_MARKER: &str = "const env = { ...process.env, PATH: updatedPath };";
 const NPM_PATCH_SNIPPET: &str = "const env = { ...process.env, PATH: updatedPath };\n/* codex-hud-managed:start */\nenv.CODEX_HUD_NATIVE_PATCH = \"1\";\n/* codex-hud-managed:end */";
 
+fn patched_binary_cache_path(home: &Path, key: &str) -> PathBuf {
+    let binary_name = if cfg!(windows) { "codex.exe" } else { "codex" };
+    home.join(".codex-hud/cache/patched")
+        .join(key)
+        .join(binary_name)
+}
+
+pub fn patched_binary_cache_path_for_test(home: &Path, key: &str) -> PathBuf {
+    patched_binary_cache_path(home, key)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstallOutcome {
     Patched,
