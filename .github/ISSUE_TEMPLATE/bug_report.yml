@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible defect in codex-hud.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug.
+        Please provide enough detail for us to reproduce and verify quickly.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I removed or redacted secrets/tokens from logs and screenshots.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: codex-hud version
+      description: Example: 0.1.0
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: codex_version
+    attributes:
+      label: Codex version
+      description: Include `codex --version` output.
+      placeholder: codex x.y.z
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include exact commands and files touched.
+      placeholder: |
+        1. Run ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste redacted logs, command output, or screenshots.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any related issue links, workarounds, or edge cases.
+    validations:
+      required: false
