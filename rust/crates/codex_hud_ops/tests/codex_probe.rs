@@ -1,4 +1,7 @@
-use codex_hud_ops::codex_probe::{detect_codex_path, file_sha256_hex, probe_compatibility_key};
+use codex_hud_ops::codex_probe::{
+    detect_codex_path, detect_npm_package_root_from_codex_binary, file_sha256_hex,
+    probe_compatibility_key,
+};
 use tempfile::tempdir;
 
 #[test]
@@ -49,4 +52,21 @@ fn probes_compatibility_key_from_codex_binary() {
     let key = probe_compatibility_key(Some(&codex), "").unwrap();
     let sha = file_sha256_hex(&codex).unwrap();
     assert_eq!(key, format!("0.104.0+{sha}"));
+}
+
+#[test]
+fn detects_npm_package_root_from_real_codex_launcher_path() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("lib/node_modules/@openai/codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let detected = detect_npm_package_root_from_codex_binary(&launcher).unwrap();
+    assert_eq!(detected, root);
 }

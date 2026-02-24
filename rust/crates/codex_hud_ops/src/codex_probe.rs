@@ -3,6 +3,18 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn codex_package_root(candidate: &Path) -> Option<PathBuf> {
+    let package_json = candidate.join("package.json");
+    let raw = std::fs::read_to_string(package_json).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&raw).ok()?;
+    let name = value.get("name")?.as_str()?;
+    if name == "@openai/codex" {
+        Some(candidate.to_path_buf())
+    } else {
+        None
+    }
+}
+
 pub fn detect_codex_path(explicit: Option<&Path>, path_env: &str) -> Result<PathBuf, String> {
     if let Some(path) = explicit {
         if path.exists() {
@@ -38,6 +50,23 @@ pub fn parse_codex_version_line(line: &str) -> Option<String> {
     let _name = parts.next()?;
     let raw = parts.next()?;
     Some(raw.trim_start_matches('v').to_string())
+}
+
+pub fn detect_npm_package_root_from_codex_binary(codex_path: &Path) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    candidates.push(codex_path.to_path_buf());
+    if let Ok(real) = std::fs::canonicalize(codex_path) {
+        candidates.push(real);
+    }
+
+    for candidate in candidates {
+        for ancestor in candidate.ancestors() {
+            if let Some(root) = codex_package_root(ancestor) {
+                return Some(root);
+            }
+        }
+    }
+    None
 }
 
 pub fn file_sha256_hex(path: &Path) -> Result<String, String> {
