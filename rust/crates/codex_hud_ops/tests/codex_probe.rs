@@ -1,6 +1,6 @@
 use codex_hud_ops::codex_probe::{
     detect_codex_path, detect_npm_package_root_from_codex_binary, file_sha256_hex,
-    probe_compatibility_key,
+    probe_compatibility_key, resolve_npm_vendor_binary_path_from_package_root,
 };
 use tempfile::tempdir;
 
@@ -143,4 +143,44 @@ fn detects_npm_package_root_from_real_codex_launcher_path() {
 
     let detected = detect_npm_package_root_from_codex_binary(&launcher).unwrap();
     assert_eq!(detected, root);
+}
+
+#[test]
+fn resolves_npm_vendor_binary_path_from_package_root() {
+    let root = std::path::Path::new("/opt/node_modules/@openai/codex");
+    let resolved = resolve_npm_vendor_binary_path_from_package_root(root).unwrap();
+
+    #[cfg(target_os = "macos")]
+    #[cfg(target_arch = "aarch64")]
+    assert!(resolved.ends_with(
+        "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex"
+    ));
+
+    #[cfg(target_os = "macos")]
+    #[cfg(target_arch = "x86_64")]
+    assert!(resolved
+        .ends_with("node_modules/@openai/codex-darwin-x64/vendor/x86_64-apple-darwin/codex/codex"));
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_arch = "x86_64")]
+    assert!(resolved
+        .ends_with("node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex/codex"));
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_arch = "aarch64")]
+    assert!(resolved.ends_with(
+        "node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex/codex"
+    ));
+
+    #[cfg(target_os = "windows")]
+    #[cfg(target_arch = "x86_64")]
+    assert!(resolved.ends_with(
+        "node_modules\\@openai\\codex-win32-x64\\vendor\\x86_64-pc-windows-msvc\\codex\\codex.exe"
+    ));
+
+    #[cfg(target_os = "windows")]
+    #[cfg(target_arch = "aarch64")]
+    assert!(resolved.ends_with(
+        "node_modules\\@openai\\codex-win32-arm64\\vendor\\aarch64-pc-windows-msvc\\codex\\codex.exe"
+    ));
 }

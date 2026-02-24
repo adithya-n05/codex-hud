@@ -119,6 +119,38 @@ pub fn detect_npm_package_root_from_codex_binary(codex_path: &Path) -> Option<Pa
     None
 }
 
+pub fn resolve_npm_vendor_binary_path_from_package_root(codex_root: &Path) -> Result<PathBuf, String> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    let rel = "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex";
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    let rel = "node_modules/@openai/codex-darwin-x64/vendor/x86_64-apple-darwin/codex/codex";
+
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let rel = "node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex/codex";
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    let rel = "node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex/codex";
+
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    let rel = "node_modules/@openai/codex-win32-x64/vendor/x86_64-pc-windows-msvc/codex/codex.exe";
+
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    let rel = "node_modules/@openai/codex-win32-arm64/vendor/aarch64-pc-windows-msvc/codex/codex.exe";
+
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+        all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "aarch64")
+    )))]
+    return Err("unsupported platform for npm codex vendor binary path resolution".to_string());
+
+    Ok(codex_root.join(rel))
+}
+
 pub fn file_sha256_hex(path: &Path) -> Result<String, String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
     let normalized = strip_managed_patch_block(&bytes);
