@@ -13,6 +13,7 @@ test('npm pack excludes .docs tree', () => {
   assert.ok(Array.isArray(pkg.files));
   assert.ok(pkg.files.includes('bin/'));
   assert.ok(pkg.files.includes('scripts/'));
+  assert.ok(pkg.files.includes('assets/'));
   assert.ok(pkg.files.includes('rust/'));
   assert.ok(pkg.files.includes('README.md'));
   assert.ok(pkg.files.includes('LICENSE'));
@@ -21,6 +22,7 @@ test('npm pack excludes .docs tree', () => {
   const pack = parsePackJson();
   const names = new Set(pack.files.map((f) => f.path));
   assert.ok(names.has('scripts/postinstall.mjs'));
+  assert.ok(names.has('assets/compat/compat.json'));
   assert.ok(names.has('rust/Cargo.toml'));
   for (const name of names) {
     assert.ok(!name.startsWith('.docs/'));

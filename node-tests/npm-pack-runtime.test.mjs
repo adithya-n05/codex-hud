@@ -12,6 +12,7 @@ test('npm pack includes runtime payload files', () => {
   assert.ok(Array.isArray(pkg.files));
   assert.ok(pkg.files.includes('bin/'));
   assert.ok(pkg.files.includes('scripts/'));
+  assert.ok(pkg.files.includes('assets/'));
   assert.ok(pkg.files.includes('rust/'));
   assert.ok(pkg.files.includes('package.json'));
 
@@ -20,5 +21,7 @@ test('npm pack includes runtime payload files', () => {
   assert.ok(names.has('package.json'));
   assert.ok(names.has('bin/codex-hud.js'));
   assert.ok(names.has('scripts/postinstall.mjs'));
+  assert.ok(names.has('assets/compat/compat.json'));
+  assert.ok(names.has('assets/compat/public_key.hex'));
   assert.ok(names.has('rust/Cargo.toml'));
 });

@@ -29,6 +29,28 @@ Performance priorities in this repository:
 
 As releases mature, reproducible benchmark data will be published for supported platforms.
 
+## Real Local End-to-End Check With Existing Codex
+
+1. Confirm Codex is reachable: `codex --version`
+2. Install HUD: `codex-hud install`
+3. Verify status: `codex-hud status`
+4. Open Codex and run `/statusline`
+5. Uninstall cleanly: `codex-hud uninstall`
+6. Verify stock Codex still works: `codex --version`
+
+Optional strict E2E smoke:
+
+`CODEX_HUD_E2E_REAL=1 CODEX_BIN=codex cargo test -p codex_hud_cli --test real_codex_e2e -- --exact real_codex_minimal_env_install_status_uninstall_and_passthrough_e2e`
+
+Native patch behavior and limits:
+
+- codex-hud applies native patching when a supported source-layout substrate is detected.
+- for packaged/non-source Codex installs, codex-hud falls back safely and reports `native patch substrate unavailable for installed codex layout`.
+
+Stock passthrough check:
+
+`codex-hud run --stock-codex codex -- --version`
+
 ## Development Requirements
 
 To run and contribute locally, install:
