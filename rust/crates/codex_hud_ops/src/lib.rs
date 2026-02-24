@@ -22,6 +22,7 @@ pub mod release_gate;
 pub mod status;
 pub mod support_gate;
 pub mod unsupported_notice;
+pub mod statusline_migration;
 
 pub fn ops_ready() -> bool {
     true
