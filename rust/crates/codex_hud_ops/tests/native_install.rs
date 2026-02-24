@@ -188,3 +188,74 @@ fn passthrough_reports_nonzero_status_and_stderr() {
     assert_eq!(out.status_code, 11);
     assert_eq!(out.stderr, "ERR");
 }
+
+#[test]
+fn supported_install_patches_npm_codex_launcher_in_place() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("bin/codex.js"),
+        r#"#!/usr/bin/env node
+const updatedPath = "x";
+const env = { ...process.env, PATH: updatedPath };
+"#,
+    )
+    .unwrap();
+
+    let manifest = root.join(".codex-hud-compat.json");
+    let payload = r#"{"schema_version":1,"supported_keys":["0.104.0+abc"]}"#;
+    let sig = sign_manifest_for_tests(payload);
+    std::fs::write(
+        &manifest,
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["0.104.0+abc"],"signature_hex":"{}"}}"#,
+            sig
+        ),
+    )
+    .unwrap();
+
+    let out = install_native_patch(
+        &root,
+        "0.104.0+abc",
+        &manifest,
+        &test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+    assert_eq!(out, InstallOutcome::Patched);
+
+    let patched = std::fs::read_to_string(root.join("bin/codex.js")).unwrap();
+    assert!(patched.contains("codex-hud-managed"));
+}
+
+#[test]
+fn uninstall_removes_npm_launcher_managed_block_without_backup_files() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    std::fs::write(
+        root.join("bin/codex.js"),
+        r#"const env = { ...process.env, PATH: updatedPath };
+/* codex-hud-managed:start */
+env.CODEX_HUD_NATIVE_PATCH = "1";
+/* codex-hud-managed:end */
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join(".codex-hud/patch-state.json"),
+        r#"{"patched_rel_paths":["bin/codex.js"]}"#,
+    )
+    .unwrap();
+
+    uninstall_native_patch(&root).unwrap();
+    let restored = std::fs::read_to_string(root.join("bin/codex.js")).unwrap();
+    assert!(!restored.contains("codex-hud-managed"));
+    assert!(restored.contains("const env = { ...process.env, PATH: updatedPath };"));
+}

@@ -4,6 +4,10 @@ use crate::support_gate::{resolve_install_mode, InstallMode};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+const NPM_LAUNCHER_REL_PATH: &str = "bin/codex.js";
+const NPM_PATCH_MARKER: &str = "const env = { ...process.env, PATH: updatedPath };";
+const NPM_PATCH_SNIPPET: &str = "const env = { ...process.env, PATH: updatedPath };\n/* codex-hud-managed:start */\nenv.CODEX_HUD_NATIVE_PATCH = \"1\";\n/* codex-hud-managed:end */";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstallOutcome {
     Patched,
@@ -27,6 +31,36 @@ fn map_target_rel_to_real(codex_root: &Path, rel: &str) -> PathBuf {
     codex_root.join(trimmed)
 }
 
+fn is_npm_codex_root(codex_root: &Path) -> bool {
+    let package_json = codex_root.join("package.json");
+    let raw = match std::fs::read_to_string(package_json) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    let value: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    value
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(|v| v == "@openai/codex")
+        .unwrap_or(false)
+}
+
+fn strip_managed_patch_block(value: &str) -> String {
+    let start = "/* codex-hud-managed:start */";
+    let end = "/* codex-hud-managed:end */";
+    if let (Some(s), Some(e)) = (value.find(start), value.find(end)) {
+        let end_index = e + end.len();
+        let mut out = String::new();
+        out.push_str(&value[..s]);
+        out.push_str(value[end_index..].trim_start_matches('\n'));
+        return out;
+    }
+    value.to_string()
+}
+
 pub fn install_native_patch(
     codex_root: &Path,
     key: &str,
@@ -36,6 +70,31 @@ pub fn install_native_patch(
     match resolve_install_mode(manifest_path, key, public_key_hex)? {
         InstallMode::RunStock { reason } => Ok(InstallOutcome::RanStock { reason }),
         InstallMode::PatchAndRunManaged => {
+            if is_npm_codex_root(codex_root) {
+                let launcher = codex_root.join(NPM_LAUNCHER_REL_PATH);
+                if !launcher.exists() {
+                    return Ok(InstallOutcome::RanStock {
+                        reason: "native patch substrate unavailable for installed codex layout"
+                            .to_string(),
+                    });
+                }
+
+                let original = std::fs::read_to_string(&launcher).map_err(|e| e.to_string())?;
+                let patched = apply_marker_replace(&original, NPM_PATCH_MARKER, NPM_PATCH_SNIPPET)?;
+                std::fs::write(&launcher, patched).map_err(|e| e.to_string())?;
+
+                let state = PatchState {
+                    patched_rel_paths: vec![NPM_LAUNCHER_REL_PATH.to_string()],
+                };
+                let state_file = codex_root.join(".codex-hud/patch-state.json");
+                if let Some(parent) = state_file.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                let json = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+                std::fs::write(state_file, json).map_err(|e| e.to_string())?;
+                return Ok(InstallOutcome::Patched);
+            }
+
             let targets = native_patch_targets();
             let mut plan: Vec<(String, PathBuf, String, String, PathBuf)> = Vec::new();
 
@@ -112,8 +171,14 @@ pub fn uninstall_native_patch(codex_root: &Path) -> Result<(), String> {
             .join(".codex-hud/backups")
             .join(&rel)
             .with_extension("bak");
-        let original = std::fs::read(&backup).map_err(|e| e.to_string())?;
-        std::fs::write(&target, original).map_err(|e| e.to_string())?;
+        if backup.exists() {
+            let original = std::fs::read(&backup).map_err(|e| e.to_string())?;
+            std::fs::write(&target, original).map_err(|e| e.to_string())?;
+        } else {
+            let patched = std::fs::read_to_string(&target).map_err(|e| e.to_string())?;
+            let restored = strip_managed_patch_block(&patched);
+            std::fs::write(&target, restored).map_err(|e| e.to_string())?;
+        }
     }
 
     std::fs::remove_file(state_path).map_err(|e| e.to_string())?;
