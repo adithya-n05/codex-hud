@@ -15,8 +15,8 @@ test('ci workflow runs npm test and rust workspace checks', () => {
   const path = '.github/workflows/ci.yml';
   assert.ok(existsSync(path), 'expected ci workflow file');
   const text = readFileSync(path, 'utf8');
-  assert.ok(!text.includes('npm ci'));
-  assert.ok(text.includes('npm install'));
+  assert.ok(text.includes('cache: "npm"'));
+  assert.ok(text.includes('npm ci'));
   assert.ok(text.includes('npm test'));
   assert.ok(text.includes('cargo test --workspace'));
   assert.ok(text.includes('cargo clippy --workspace --all-targets -- -D warnings'));
@@ -29,8 +29,8 @@ test('codex release detection workflow exists and calls detect script', () => {
   assert.ok(text.includes('schedule:'));
   assert.ok(text.includes('scripts/ci/detect-codex-updates.mjs'));
   assert.ok(text.includes('workflow_dispatch:'));
-  assert.ok(!text.includes('npm ci'));
-  assert.ok(text.includes('npm install'));
+  assert.ok(text.includes('cache: "npm"'));
+  assert.ok(text.includes('npm ci'));
   assert.ok(text.includes('createDispatchEvent'));
   assert.ok(text.includes('codex-release-detected'));
 });
