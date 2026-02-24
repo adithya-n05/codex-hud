@@ -132,3 +132,50 @@ fn creates_statusline_config_when_config_file_missing() {
     assert!(!created.contains("\"context-remaining\""));
     assert!(!created.contains("\"context-used\""));
 }
+
+#[test]
+fn returns_error_when_codex_config_parent_is_a_file() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::write(home.join(".codex"), "not-a-directory").unwrap();
+
+    let err = ensure_hud_statusline_config(&home).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn malformed_toml_is_left_unchanged() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(codex_dir.join("config.toml"), "[tui\nstatus_line = [").unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(!changed);
+}
+
+#[test]
+fn non_table_toml_root_is_ignored() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(codex_dir.join("config.toml"), "42").unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(!changed);
+}
+
+#[test]
+fn non_table_tui_section_is_ignored() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(codex_dir.join("config.toml"), r#"tui = "inline""#).unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(!changed);
+}
