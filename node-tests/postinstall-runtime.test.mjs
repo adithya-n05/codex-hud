@@ -30,3 +30,20 @@ test('postinstall installs packaged runtime and compat assets without cargo fall
   assert.ok(fs.existsSync(path.join(home, '.codex-hud', 'compat', 'compat.json')));
   assert.ok(fs.existsSync(path.join(home, '.codex-hud', 'compat', 'public_key.hex')));
 });
+
+test('postinstall installs packaged runtime and cmd shim on windows', () => {
+  const pkg = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-pkg-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-home-'));
+  const runtimeDir = path.join(pkg, 'dist', 'runtime', 'win32-x64');
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  fs.writeFileSync(path.join(runtimeDir, 'codex_hud_cli.exe'), 'exe');
+
+  runPostinstallForHome(pkg, home, 'win32', 'x64');
+
+  const installedExe = path.join(home, '.codex-hud', 'bin', 'codex-hud.exe');
+  const installedCmd = path.join(home, '.codex-hud', 'bin', 'codex-hud.cmd');
+  const cmdText = fs.readFileSync(installedCmd, 'utf8');
+
+  assert.ok(fs.existsSync(installedExe));
+  assert.ok(cmdText.includes(`"${installedExe}" %*`));
+});
