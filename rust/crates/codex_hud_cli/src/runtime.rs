@@ -5,6 +5,7 @@ use codex_hud_ops::native_install::{
     install_native_patch_auto_for_stock_path, InstallOutcome,
     run_stock_codex_passthrough_interactive, uninstall_native_patch_auto,
 };
+use codex_hud_ops::statusline_migration::ensure_hud_statusline_config;
 use codex_hud_ops::unsupported_notice::{
     build_unsupported_notice_message, should_show_unsupported_notice,
 };
@@ -51,6 +52,7 @@ impl CommandHandlers for RealHandlers {
         integration_install(&home, stock_codex.to_string_lossy().as_ref())?;
         match install_native_patch_auto_for_stock_path(&home, &path_env, &stock_codex)? {
             InstallOutcome::Patched => {
+                ensure_hud_statusline_config(&home)?;
                 record_last_run_policy(&home, "patched", None);
                 Ok("install: patched".to_string())
             }
@@ -79,7 +81,10 @@ impl CommandHandlers for RealHandlers {
             Path::new(stock_codex_path),
         );
         match &install_outcome {
-            Ok(InstallOutcome::Patched) => record_last_run_policy(&home, "patched", None),
+            Ok(InstallOutcome::Patched) => {
+                let _ = ensure_hud_statusline_config(&home);
+                record_last_run_policy(&home, "patched", None);
+            }
             Ok(InstallOutcome::RanStock { reason }) => {
                 record_last_run_policy(&home, "stock", Some(reason));
             }
