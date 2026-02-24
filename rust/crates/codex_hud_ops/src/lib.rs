@@ -12,6 +12,7 @@ pub mod uninstall;
 pub use uninstall::reverse_patch_if_exact_state;
 pub use uninstall::run_uninstall_with_rc;
 pub mod codex_probe;
+pub mod compat_refresh;
 pub mod integration_flow;
 pub mod manifest_signing;
 pub mod native_install;
