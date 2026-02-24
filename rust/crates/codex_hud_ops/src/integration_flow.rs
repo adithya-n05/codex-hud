@@ -97,6 +97,10 @@ pub fn integration_status(home: &Path) -> Result<String, String> {
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),
         stock_codex_path,
+        patch_mode: None,
+        patch_reason: None,
+        compat_key: None,
+        compat_refresh_source: None,
     };
     let mut out = render_status_summary(&snapshot);
     out.push_str(&format!(
@@ -130,6 +134,10 @@ pub fn integration_status_details(home: &Path) -> Result<String, String> {
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),
         stock_codex_path,
+        patch_mode: None,
+        patch_reason: None,
+        compat_key: None,
+        compat_refresh_source: None,
     };
     Ok(render_status_details(&snapshot))
 }
