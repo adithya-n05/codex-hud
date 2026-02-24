@@ -360,6 +360,15 @@ pub fn install_native_patch_auto_with(
         }
     };
 
+    if out == InstallOutcome::Patched
+        && detect_npm_package_root_from_codex_binary(&codex).is_some()
+    {
+        let cached = patched_binary_cache_path(home, &key);
+        if cached.exists() {
+            install_native_patch_using_cached_binary(home, &codex, &key)?;
+        }
+    }
+
     if out == InstallOutcome::Patched {
         let pointer = home.join(".codex-hud/last_codex_root.txt");
         if let Some(parent) = pointer.parent() {
