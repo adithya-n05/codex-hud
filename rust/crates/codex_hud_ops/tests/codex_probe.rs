@@ -28,6 +28,25 @@ fn detects_codex_from_joined_path_list() {
 }
 
 #[test]
+fn skips_codex_hud_managed_shim_when_detecting_stock_codex() {
+    let tmp = tempdir().unwrap();
+    let managed_dir = tmp.path().join(".codex-hud/bin");
+    let stock_dir = tmp.path().join("stock/bin");
+    std::fs::create_dir_all(&managed_dir).unwrap();
+    std::fs::create_dir_all(&stock_dir).unwrap();
+
+    let exe_name = if cfg!(windows) { "codex.exe" } else { "codex" };
+    let managed = managed_dir.join(exe_name);
+    let stock = stock_dir.join(exe_name);
+    std::fs::write(&managed, b"managed").unwrap();
+    std::fs::write(&stock, b"stock").unwrap();
+
+    let joined = std::env::join_paths([managed_dir.as_path(), stock_dir.as_path()]).unwrap();
+    let found = detect_codex_path(None, &joined.to_string_lossy()).unwrap();
+    assert_eq!(found, stock);
+}
+
+#[test]
 fn probes_compatibility_key_from_codex_binary() {
     let tmp = tempdir().unwrap();
     let codex = if cfg!(windows) {

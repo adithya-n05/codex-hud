@@ -15,6 +15,25 @@ fn codex_package_root(candidate: &Path) -> Option<PathBuf> {
     }
 }
 
+fn is_codex_hud_managed_shim(candidate: &Path) -> bool {
+    let Some(stem) = candidate.file_stem().and_then(|v| v.to_str()) else {
+        return false;
+    };
+    if !stem.eq_ignore_ascii_case("codex") {
+        return false;
+    }
+    let Some(bin_dir) = candidate.parent() else {
+        return false;
+    };
+    if bin_dir.file_name().and_then(|v| v.to_str()) != Some("bin") {
+        return false;
+    }
+    let Some(root_dir) = bin_dir.parent() else {
+        return false;
+    };
+    root_dir.file_name().and_then(|v| v.to_str()) == Some(".codex-hud")
+}
+
 pub fn detect_codex_path(explicit: Option<&Path>, path_env: &str) -> Result<PathBuf, String> {
     if let Some(path) = explicit {
         if path.exists() {
@@ -27,7 +46,7 @@ pub fn detect_codex_path(explicit: Option<&Path>, path_env: &str) -> Result<Path
         {
             for candidate_name in ["codex.exe", "codex.cmd", "codex.bat", "codex"] {
                 let candidate = dir.join(candidate_name);
-                if candidate.exists() {
+                if candidate.exists() && !is_codex_hud_managed_shim(&candidate) {
                     return Ok(candidate);
                 }
             }
@@ -36,7 +55,7 @@ pub fn detect_codex_path(explicit: Option<&Path>, path_env: &str) -> Result<Path
         #[cfg(not(windows))]
         {
             let candidate = dir.join("codex");
-            if candidate.exists() {
+            if candidate.exists() && !is_codex_hud_managed_shim(&candidate) {
                 return Ok(candidate);
             }
         }
