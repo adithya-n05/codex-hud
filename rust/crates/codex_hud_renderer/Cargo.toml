@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 unicode-segmentation = "1"
-unicode-width = "0.1"
+unicode-width = "0.2"
