@@ -50,6 +50,8 @@ struct PatchState {
 struct NpmPatchState {
     compatibility_key: String,
     vendor_sha256: String,
+    #[serde(default)]
+    cached_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,7 +111,12 @@ fn read_npm_patch_state(home: &Path) -> Option<NpmPatchState> {
     serde_json::from_str(&raw).ok()
 }
 
-fn write_npm_patch_state(home: &Path, key: &str, vendor_sha256: &str) -> Result<(), String> {
+fn write_npm_patch_state(
+    home: &Path,
+    key: &str,
+    vendor_sha256: &str,
+    cached_sha256: &str,
+) -> Result<(), String> {
     let path = npm_patch_state_path(home);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -117,6 +124,7 @@ fn write_npm_patch_state(home: &Path, key: &str, vendor_sha256: &str) -> Result<
     let state = NpmPatchState {
         compatibility_key: key.to_string(),
         vendor_sha256: vendor_sha256.to_string(),
+        cached_sha256: Some(cached_sha256.to_string()),
     };
     let json = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
     std::fs::write(path, json).map_err(|e| e.to_string())
@@ -158,7 +166,11 @@ fn npm_patch_state_matches(
         return Ok(false);
     }
     let cached_bytes = std::fs::read(cached).map_err(|e| e.to_string())?;
-    Ok(sha256_hex(&cached_bytes) == vendor_sha)
+    let cached_sha = sha256_hex(&cached_bytes);
+    if let Some(expected_cached_sha) = state.cached_sha256 {
+        return Ok(expected_cached_sha == cached_sha);
+    }
+    Ok(cached_sha == vendor_sha)
 }
 
 fn is_macho_binary(bytes: &[u8]) -> bool {
@@ -323,6 +335,7 @@ pub fn install_native_patch_using_cached_binary(
     }
 
     let cached_bytes = std::fs::read(&cached).map_err(|e| e.to_string())?;
+    let cached_sha = sha256_hex(&cached_bytes);
     let existing_bytes = std::fs::read(&vendor_binary).map_err(|e| e.to_string())?;
     if existing_bytes != cached_bytes {
         std::fs::write(&vendor_binary, &cached_bytes).map_err(|e| e.to_string())?;
@@ -330,7 +343,7 @@ pub fn install_native_patch_using_cached_binary(
     }
 
     let vendor_final = std::fs::read(&vendor_binary).map_err(|e| e.to_string())?;
-    write_npm_patch_state(home, key, &sha256_hex(&vendor_final))?;
+    write_npm_patch_state(home, key, &sha256_hex(&vendor_final), &cached_sha)?;
 
     Ok(InstallOutcome::Patched)
 }
@@ -441,15 +454,33 @@ pub fn install_native_patch_auto_with(
     let is_npm_layout = detect_npm_package_root_from_codex_binary(&codex).is_some();
     let compat_manifest = home.join(".codex-hud/compat/compat.json");
     let pubkey_path = home.join(".codex-hud/compat/public_key.hex");
-    let refresh_source = match refresh_compat_bundle(home, compat_base_url) {
-        Ok(()) => "github-release",
-        Err(err) => {
-            if !compat_manifest.exists() || !pubkey_path.exists() {
-                return Ok(InstallOutcome::RanStock {
-                    reason: format!("compatibility bundle refresh failed: {err}"),
-                });
+    let refresh_source = if compat_manifest.exists() && pubkey_path.exists() {
+        let local_pubkey = std::fs::read_to_string(&pubkey_path).map_err(|e| e.to_string())?;
+        match resolve_install_mode(&compat_manifest, &key, local_pubkey.trim()) {
+            Ok(InstallMode::PatchAndRunManaged) => "local-cache-hit",
+            _ => match refresh_compat_bundle(home, compat_base_url) {
+                Ok(()) => "github-release",
+                Err(err) => {
+                    if !compat_manifest.exists() || !pubkey_path.exists() {
+                        return Ok(InstallOutcome::RanStock {
+                            reason: format!("compatibility bundle refresh failed: {err}"),
+                        });
+                    }
+                    "local-cache-fallback"
+                }
+            },
+        }
+    } else {
+        match refresh_compat_bundle(home, compat_base_url) {
+            Ok(()) => "github-release",
+            Err(err) => {
+                if !compat_manifest.exists() || !pubkey_path.exists() {
+                    return Ok(InstallOutcome::RanStock {
+                        reason: format!("compatibility bundle refresh failed: {err}"),
+                    });
+                }
+                "local-cache-fallback"
             }
-            "local-cache-fallback"
         }
     };
 
