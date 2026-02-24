@@ -3,7 +3,7 @@ use codex_hud_ops::codex_probe::{detect_codex_path, probe_compatibility_key};
 use codex_hud_ops::integration_flow::{integration_install, integration_status, integration_status_details};
 use codex_hud_ops::native_install::{
     install_native_patch_auto, install_native_patch_auto_for_stock_path, InstallOutcome,
-    run_stock_codex_passthrough, uninstall_native_patch_auto,
+    run_stock_codex_passthrough_interactive, uninstall_native_patch_auto,
 };
 use codex_hud_ops::unsupported_notice::{
     build_unsupported_notice_message, should_show_unsupported_notice,
@@ -67,10 +67,13 @@ impl CommandHandlers for RealHandlers {
                 }
             }
         }
-        let out = run_stock_codex_passthrough(Path::new(stock_codex_path), passthrough_args)?;
-        if out.status_code != 0 {
-            return Err(format!("stock codex exited with {}", out.status_code));
+        let status = run_stock_codex_passthrough_interactive(
+            Path::new(stock_codex_path),
+            passthrough_args,
+        )?;
+        if status != 0 {
+            return Err(format!("stock codex exited with {status}"));
         }
-        Ok(out.stdout)
+        Ok(String::new())
     }
 }

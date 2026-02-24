@@ -1,7 +1,8 @@
 use codex_hud_ops::manifest_signing::{sign_manifest_for_tests, test_public_key_hex_for_tests};
 use codex_hud_ops::native_install::{
     install_native_patch, install_native_patch_auto_for_stock_path, install_native_patch_auto_with,
-    run_stock_codex_passthrough, uninstall_native_patch, InstallOutcome,
+    run_stock_codex_passthrough, run_stock_codex_passthrough_interactive, uninstall_native_patch,
+    InstallOutcome,
 };
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -485,4 +486,21 @@ console.log(env.PATH);
     let path_env = bad_bin.to_string_lossy().to_string();
     let out = install_native_patch_auto_for_stock_path(&home, &path_env, &launcher).unwrap();
     assert_eq!(out, InstallOutcome::Patched);
+}
+
+#[test]
+fn interactive_passthrough_returns_child_exit_status() {
+    let tmp = tempdir().unwrap();
+    let script = tmp.path().join("stock.sh");
+    std::fs::write(&script, "#!/usr/bin/env sh\nexit 17\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&script).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script, perms).unwrap();
+    }
+
+    let code = run_stock_codex_passthrough_interactive(&script, &[]).unwrap();
+    assert_eq!(code, 17);
 }

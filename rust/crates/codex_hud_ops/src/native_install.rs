@@ -204,6 +204,20 @@ pub fn run_stock_codex_passthrough(
     })
 }
 
+pub fn run_stock_codex_passthrough_interactive(
+    stock_codex: &Path,
+    args: &[String],
+) -> Result<i32, String> {
+    let status = std::process::Command::new(stock_codex)
+        .args(args)
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status()
+        .map_err(|e| e.to_string())?;
+    Ok(status.code().unwrap_or(1))
+}
+
 fn discover_source_root_from_codex_binary(codex_path: &Path) -> Option<PathBuf> {
     for ancestor in codex_path.ancestors() {
         if ancestor.join("tui/src/slash_command.rs").exists() {
