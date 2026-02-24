@@ -27,6 +27,8 @@ test('codex release detection workflow exists and calls detect script', () => {
   assert.ok(text.includes('schedule:'));
   assert.ok(text.includes('scripts/ci/detect-codex-updates.mjs'));
   assert.ok(text.includes('workflow_dispatch:'));
+  assert.ok(text.includes('createDispatchEvent'));
+  assert.ok(text.includes('codex-release-detected'));
 });
 
 test('compat patch pipeline workflow supports dispatch from release detector', () => {
