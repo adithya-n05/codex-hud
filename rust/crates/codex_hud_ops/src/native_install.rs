@@ -1,5 +1,7 @@
 use crate::compat_refresh::refresh_compat_bundle;
-use crate::codex_probe::{detect_codex_path, probe_compatibility_key};
+use crate::codex_probe::{
+    detect_codex_path, detect_npm_package_root_from_codex_binary, probe_compatibility_key,
+};
 use crate::native_patch::{apply_marker_replace, native_patch_targets};
 use crate::support_gate::{resolve_install_mode, InstallMode};
 use serde::{Deserialize, Serialize};
@@ -238,12 +240,17 @@ pub fn install_native_patch_auto_with(
         }
     }
 
-    let codex_root = match discover_source_root_from_codex_binary(&codex) {
-        Some(root) => root,
-        None => {
-            return Ok(InstallOutcome::RanStock {
-                reason: "native patch substrate unavailable for installed codex layout".to_string(),
-            })
+    let codex_root = if let Some(root) = detect_npm_package_root_from_codex_binary(&codex) {
+        root
+    } else {
+        match discover_source_root_from_codex_binary(&codex) {
+            Some(root) => root,
+            None => {
+                return Ok(InstallOutcome::RanStock {
+                    reason: "native patch substrate unavailable for installed codex layout"
+                        .to_string(),
+                })
+            }
         }
     };
 
