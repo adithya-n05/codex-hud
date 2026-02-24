@@ -6,11 +6,13 @@ use crate::codex_probe::{
 use crate::native_patch::{apply_marker_replace, native_patch_targets};
 use crate::support_gate::{resolve_install_mode, InstallMode};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 const NPM_LAUNCHER_REL_PATH: &str = "bin/codex.js";
 const NPM_PATCH_MARKER: &str = "const env = { ...process.env, PATH: updatedPath };";
 const NPM_PATCH_SNIPPET: &str = "const env = { ...process.env, PATH: updatedPath };\n/* codex-hud-managed:start */\nenv.CODEX_HUD_NATIVE_PATCH = \"1\";\n/* codex-hud-managed:end */";
+const NPM_PATCH_STATE_REL_PATH: &str = ".codex-hud/cache/npm_patch_state.json";
 
 fn patched_binary_cache_path(home: &Path, key: &str) -> PathBuf {
     let binary_name = if cfg!(windows) { "codex.exe" } else { "codex" };
@@ -42,6 +44,12 @@ pub enum InstallOutcome {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PatchState {
     patched_rel_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NpmPatchState {
+    compatibility_key: String,
+    vendor_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,6 +92,64 @@ fn strip_managed_patch_block(value: &str) -> String {
         return out;
     }
     value.to_string()
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
+}
+
+fn npm_patch_state_path(home: &Path) -> PathBuf {
+    home.join(NPM_PATCH_STATE_REL_PATH)
+}
+
+fn read_npm_patch_state(home: &Path) -> Option<NpmPatchState> {
+    let raw = std::fs::read_to_string(npm_patch_state_path(home)).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+fn write_npm_patch_state(home: &Path, key: &str, vendor_sha256: &str) -> Result<(), String> {
+    let path = npm_patch_state_path(home);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let state = NpmPatchState {
+        compatibility_key: key.to_string(),
+        vendor_sha256: vendor_sha256.to_string(),
+    };
+    let json = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    std::fs::write(path, json).map_err(|e| e.to_string())
+}
+
+fn npm_launcher_has_managed_patch(launcher: &Path) -> bool {
+    let Ok(raw) = std::fs::read_to_string(launcher) else {
+        return false;
+    };
+    raw.contains("/* codex-hud-managed:start */")
+}
+
+fn npm_patch_state_matches(
+    home: &Path,
+    key: &str,
+    codex_root: &Path,
+) -> Result<bool, String> {
+    let launcher = codex_root.join(NPM_LAUNCHER_REL_PATH);
+    if !npm_launcher_has_managed_patch(&launcher) {
+        return Ok(false);
+    }
+    let Some(state) = read_npm_patch_state(home) else {
+        return Ok(false);
+    };
+    if state.compatibility_key != key {
+        return Ok(false);
+    }
+    let vendor_binary = resolve_npm_vendor_binary_path_from_package_root(codex_root)?;
+    if !vendor_binary.exists() {
+        return Ok(false);
+    }
+    let vendor = std::fs::read(vendor_binary).map_err(|e| e.to_string())?;
+    Ok(state.vendor_sha256 == sha256_hex(&vendor))
 }
 
 fn is_macho_binary(bytes: &[u8]) -> bool {
@@ -254,6 +320,9 @@ pub fn install_native_patch_using_cached_binary(
         ad_hoc_codesign_if_needed(&vendor_binary, &cached_bytes)?;
     }
 
+    let vendor_final = std::fs::read(&vendor_binary).map_err(|e| e.to_string())?;
+    write_npm_patch_state(home, key, &sha256_hex(&vendor_final))?;
+
     Ok(InstallOutcome::Patched)
 }
 
@@ -416,6 +485,20 @@ pub fn install_native_patch_auto_with(
             return Ok(InstallOutcome::RanStock {
                 reason: "patched native binary cache missing for compatibility key".to_string(),
             });
+        }
+        if npm_patch_state_matches(home, &key, &codex_root)? {
+            let pointer = home.join(".codex-hud/last_codex_root.txt");
+            if let Some(parent) = pointer.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&pointer, codex_root.to_string_lossy().to_string())
+                .map_err(|e| e.to_string())?;
+            std::fs::write(
+                home.join(".codex-hud/stock_codex_path.txt"),
+                codex.to_string_lossy().to_string(),
+            )
+            .map_err(|e| e.to_string())?;
+            return Ok(InstallOutcome::Patched);
         }
     }
 
