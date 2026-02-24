@@ -1,0 +1,67 @@
+name: Detect Codex Releases
+
+on:
+  schedule:
+    - cron: "13 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has_updates: ${{ steps.detect.outputs.has_updates }}
+      new_versions: ${{ steps.detect.outputs.new_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          json="$(node scripts/ci/detect-codex-updates.mjs)"
+          echo "$json" > codex-release-detect.json
+          has_updates="$(node -e 'const fs=require("node:fs"); const d=JSON.parse(fs.readFileSync("codex-release-detect.json","utf8")); process.stdout.write(String(Boolean(d.has_updates)));')"
+          new_versions="$(node -e 'const fs=require("node:fs"); const d=JSON.parse(fs.readFileSync("codex-release-detect.json","utf8")); process.stdout.write(JSON.stringify(d.new_versions || []));')"
+          echo "has_updates=$has_updates" >> "$GITHUB_OUTPUT"
+          echo "new_versions=$new_versions" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-release-detect
+          path: codex-release-detect.json
+
+  open-tracking-issue:
+    needs: detect
+    if: needs.detect.outputs.has_updates == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          NEW_VERSIONS: ${{ needs.detect.outputs.new_versions }}
+        with:
+          script: |
+            const versions = JSON.parse(process.env.NEW_VERSIONS || '[]');
+            if (!versions.length) return;
+            const title = `Codex release detected: ${versions.join(', ')}`;
+            const body = [
+              'Automated detection found new Codex release version(s).',
+              '',
+              `Versions: ${versions.join(', ')}`,
+              '',
+              'Next step: run compat patch pipeline and publish signed catalog update.'
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['compat', 'automation']
+            });
+

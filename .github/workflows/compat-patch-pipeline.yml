@@ -1,0 +1,69 @@
+name: Compat Patch Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_version:
+        description: "Codex version to build compat patch for (e.g. 0.104.0)"
+        required: true
+        type: string
+      codex_ref:
+        description: "Optional source ref/tag in codex-upstream to apply patch against"
+        required: false
+        type: string
+  repository_dispatch:
+    types:
+      - codex-release-detected
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            version="${{ inputs.codex_version }}"
+          else
+            version="${{ github.event.client_payload.codex_version }}"
+          fi
+          if [[ -z "${version:-}" ]]; then
+            echo "codex_version missing" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  compat-build:
+    needs: resolve-target
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Verify patch series exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.resolve-target.outputs.version }}"
+          if [[ -d "patches/${version}" ]]; then
+            echo "Found version-scoped patch directory: patches/${version}"
+          elif [[ -d "patches" ]]; then
+            echo "No direct patches/${version} directory yet; using generic patches/ layout."
+          else
+            echo "No patches directory found." >&2
+            exit 1
+          fi
+      - name: Build and verify compat assets (placeholder hook)
+        run: |
+          echo "TODO: apply git format-patch series against exact codex source baseline"
+          echo "TODO: build patched artifact, create delta from stock artifact, verify expected sha"
+          echo "TODO: sign and publish updated compat catalog entry"
