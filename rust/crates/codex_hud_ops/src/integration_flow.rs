@@ -31,6 +31,10 @@ fn read_policy_fields(home: &Path) -> (Option<String>, Option<String>) {
     (mode, reason)
 }
 
+fn is_compatible_from_policy_reason(reason: Option<&str>) -> bool {
+    !matches!(reason, Some(value) if value.contains("unsupported compatibility key"))
+}
+
 pub fn integration_install(home: &Path, stock_codex_path: &str) -> Result<(), String> {
     let managed_bin_dir = home.join(".codex-hud").join("bin");
     std::fs::create_dir_all(&managed_bin_dir).map_err(|e| e.to_string())?;
@@ -117,11 +121,12 @@ pub fn integration_status(home: &Path) -> Result<String, String> {
     let compat_key = read_trimmed(&home.join(".codex-hud/compat/last_compat_key.txt"));
     let compat_refresh_source = read_trimmed(&home.join(".codex-hud/compat/refresh_source.txt"));
 
+    let compatible = is_compatible_from_policy_reason(patch_reason.as_deref());
     let snapshot = StatusSnapshot {
         installed,
         shim_present: shim,
         rc_block_present,
-        compatible: true,
+        compatible,
         codex_version: Some("unknown".to_string()),
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),
@@ -158,11 +163,12 @@ pub fn integration_status_details(home: &Path) -> Result<String, String> {
     let compat_key = read_trimmed(&home.join(".codex-hud/compat/last_compat_key.txt"));
     let compat_refresh_source = read_trimmed(&home.join(".codex-hud/compat/refresh_source.txt"));
 
+    let compatible = is_compatible_from_policy_reason(patch_reason.as_deref());
     let snapshot = StatusSnapshot {
         installed,
         shim_present: shim,
         rc_block_present,
-        compatible: true,
+        compatible,
         codex_version: Some("unknown".to_string()),
         codex_sha256: None,
         managed_root: Some(home.join(".codex-hud").to_string_lossy().to_string()),

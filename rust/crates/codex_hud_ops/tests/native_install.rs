@@ -266,6 +266,21 @@ env.CODEX_HUD_NATIVE_PATCH = "1";
 }
 
 #[test]
+fn uninstall_succeeds_when_patched_target_was_removed_by_update() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    std::fs::write(
+        root.join(".codex-hud/patch-state.json"),
+        r#"{"patched_rel_paths":["bin/codex.js"]}"#,
+    )
+    .unwrap();
+
+    uninstall_native_patch(&root).unwrap();
+    assert!(!root.join(".codex-hud/patch-state.json").exists());
+}
+
+#[test]
 fn install_auto_refreshes_compat_bundle_before_support_gate_resolution() {
     let tmp = tempdir().unwrap();
     let home = tmp.path().join("home");

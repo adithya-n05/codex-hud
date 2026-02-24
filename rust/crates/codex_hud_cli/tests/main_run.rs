@@ -212,3 +212,71 @@ console.log(env.PATH);
     assert!(policy.contains("mode=stock"));
     assert!(policy.contains("unsupported compatibility key"));
 }
+
+#[test]
+fn run_route_records_error_policy_when_stock_process_exits_nonzero() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let stock = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::create_dir_all(stock.parent().unwrap()).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &stock,
+        r#"#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("codex-cli 0.104.0");
+  process.exit(0);
+}
+if (process.argv.includes("--fail")) {
+  console.error("boom");
+  process.exit(17);
+}
+const updatedPath = process.env.PATH || "";
+const env = { ...process.env, PATH: updatedPath };
+console.log(env.PATH);
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&stock).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&stock, perms).unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&stock), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+            key, signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let bin = env!("CARGO_BIN_EXE_codex_hud_cli");
+    let out = Command::new(bin)
+        .args(["run", "--stock-codex", stock.to_str().unwrap(), "--", "--fail"])
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(17));
+
+    let policy = std::fs::read_to_string(home.join(".codex-hud/last_run_policy.txt")).unwrap();
+    assert!(policy.contains("mode=error"));
+    assert!(policy.contains("reason=stock codex exited with 17"));
+}

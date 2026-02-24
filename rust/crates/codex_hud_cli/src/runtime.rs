@@ -100,6 +100,8 @@ impl CommandHandlers for RealHandlers {
             passthrough_args,
         )?;
         if status != 0 {
+            let reason = format!("stock codex exited with {status}");
+            record_last_run_policy(&home, "error", Some(&reason));
             return Err(format!("stock codex exited with {status}"));
         }
         Ok(String::new())

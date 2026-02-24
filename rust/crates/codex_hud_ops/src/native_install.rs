@@ -178,6 +178,9 @@ pub fn uninstall_native_patch(codex_root: &Path) -> Result<(), String> {
             let original = std::fs::read(&backup).map_err(|e| e.to_string())?;
             std::fs::write(&target, original).map_err(|e| e.to_string())?;
         } else {
+            if !target.exists() {
+                continue;
+            }
             let patched = std::fs::read_to_string(&target).map_err(|e| e.to_string())?;
             let restored = strip_managed_patch_block(&patched);
             std::fs::write(&target, restored).map_err(|e| e.to_string())?;
