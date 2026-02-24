@@ -58,3 +58,44 @@ fn parse_run_with_separator_and_no_trailing_args_keeps_empty_passthrough() {
         }
     );
 }
+
+#[test]
+fn parse_cleanup_command_reports_deferred_error() {
+    let err = parse_args(["codex-hud", "cleanup"]).unwrap_err();
+    assert!(err.contains("cleanup command is deferred in v1"));
+}
+
+#[test]
+fn parse_config_repair_command_reports_deferred_error() {
+    let err = parse_args(["codex-hud", "config-repair"]).unwrap_err();
+    assert!(err.contains("config-repair helper is deferred in v1"));
+}
+
+#[test]
+fn parse_owned_string_args_cover_string_input_path() {
+    let install = parse_args(vec!["codex-hud".to_string(), "install".to_string()]).unwrap();
+    assert_eq!(install, Command::Install);
+
+    let run = parse_args(vec![
+        "codex-hud".to_string(),
+        "run".to_string(),
+        "--stock-codex".to_string(),
+        "/usr/local/bin/codex".to_string(),
+        "--".to_string(),
+        "--version".to_string(),
+    ])
+    .unwrap();
+    assert_eq!(
+        run,
+        Command::Run {
+            stock_codex_path: "/usr/local/bin/codex".to_string(),
+            passthrough_args: vec!["--version".to_string()],
+        }
+    );
+}
+
+#[test]
+fn parse_owned_string_unknown_command_fails() {
+    let err = parse_args(vec!["codex-hud".to_string(), "unknown".to_string()]).unwrap_err();
+    assert_eq!(err, "unknown command");
+}

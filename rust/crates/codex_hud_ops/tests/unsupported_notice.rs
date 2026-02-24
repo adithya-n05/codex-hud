@@ -29,3 +29,20 @@ fn unsupported_notice_surfaces_state_file_read_errors() {
     let err = should_show_unsupported_notice("0.95.0+zzz", dir.path()).unwrap_err();
     assert!(!err.is_empty());
 }
+
+#[cfg(unix)]
+#[test]
+fn unsupported_notice_surfaces_state_file_write_errors() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let read_only_dir = dir.path().join("readonly");
+    std::fs::create_dir_all(&read_only_dir).unwrap();
+    let mut perms = std::fs::metadata(&read_only_dir).unwrap().permissions();
+    perms.set_mode(0o555);
+    std::fs::set_permissions(&read_only_dir, perms).unwrap();
+
+    let err = should_show_unsupported_notice("0.95.0+zzz", &read_only_dir.join("state.txt"))
+        .unwrap_err();
+    assert!(!err.is_empty());
+}

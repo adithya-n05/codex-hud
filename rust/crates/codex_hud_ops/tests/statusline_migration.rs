@@ -221,3 +221,120 @@ fn creates_tui_section_when_missing() {
     assert!(updated.contains("[tui]"));
     assert!(updated.contains("\"permission-mode\""));
 }
+
+#[test]
+fn returns_error_when_config_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(codex_dir.join("config.toml")).unwrap();
+
+    let err = ensure_hud_statusline_config(&home).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn returns_error_when_missing_config_cannot_be_created() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    let mut perms = std::fs::metadata(&codex_dir).unwrap().permissions();
+    perms.set_mode(0o555);
+    std::fs::set_permissions(&codex_dir, perms).unwrap();
+
+    let err = ensure_hud_statusline_config(&home).unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&codex_dir).unwrap().permissions();
+    reset.set_mode(0o755);
+    std::fs::set_permissions(&codex_dir, reset).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn returns_error_when_overwriting_statusline_is_not_permitted() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    let config_path = codex_dir.join("config.toml");
+    std::fs::write(
+        &config_path,
+        r#"
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "git-branch",
+]
+"#,
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&config_path).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&config_path, perms).unwrap();
+
+    let err = ensure_hud_statusline_config(&home).unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&config_path).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&config_path, reset).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn returns_error_when_legacy_hud_migration_cannot_write() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    let config_path = codex_dir.join("config.toml");
+    std::fs::write(
+        &config_path,
+        r#"
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "git-branch",
+  "permission-mode",
+  "auth-chip",
+  "tool-calls",
+  "ctx-bar",
+  "five-hour-bar",
+  "weekly-bar",
+  "context-remaining",
+  "context-used",
+  "five-hour-limit",
+  "weekly-limit",
+  "current-dir",
+  "project-root",
+  "codex-version",
+  "context-window-size",
+  "used-tokens",
+  "total-input-tokens",
+  "total-output-tokens",
+  "session-id",
+  "model-name",
+]
+"#,
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&config_path).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&config_path, perms).unwrap();
+
+    let err = ensure_hud_statusline_config(&home).unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&config_path).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&config_path, reset).unwrap();
+}

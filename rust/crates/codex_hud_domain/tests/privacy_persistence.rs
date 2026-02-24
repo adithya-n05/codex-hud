@@ -19,3 +19,23 @@ fn redaction_toggle_persists_across_save_and_reload() {
     let content_after_second = std::fs::read_to_string(&target).unwrap();
     assert!(content_after_second.contains("model_name = true"));
 }
+
+#[test]
+fn redaction_toggle_errors_when_key_is_missing() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::write(&target, "[tui.codex_hud]\nmodel_name = true\n").unwrap();
+
+    let err = load_redaction_toggle(&target).unwrap_err();
+    assert!(err.contains("missing redact_auth_identity key"));
+}
+
+#[test]
+fn redaction_toggle_errors_for_invalid_boolean_value() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::write(&target, "redact_auth_identity = maybe\n").unwrap();
+
+    let err = load_redaction_toggle(&target).unwrap_err();
+    assert!(err.contains("invalid redact_auth_identity value"));
+}

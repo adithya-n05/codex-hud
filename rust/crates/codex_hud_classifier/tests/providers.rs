@@ -45,6 +45,16 @@ fn detect_openai_from_provider_id_or_name() {
 }
 
 #[test]
+fn detect_openai_from_provider_name_without_provider_id() {
+    let input = ClassifierInput {
+        provider_name: Some("openai".to_string()),
+        ..ClassifierInput::default()
+    };
+    let out = classify(&input);
+    assert_eq!(out.provider_label, "OpenAI");
+}
+
+#[test]
 fn detect_provider_from_model_name_hint() {
     let input = ClassifierInput {
         model_name: Some("anthropic.claude-3-5-sonnet-bedrock".to_string()),

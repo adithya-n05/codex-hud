@@ -98,3 +98,50 @@ fn reverse_patch_returns_error_when_target_cannot_be_read() {
         .expect_err("expected read error");
     assert!(!err.is_empty());
 }
+
+#[cfg(unix)]
+#[test]
+fn run_uninstall_with_rc_surfaces_remove_block_write_errors() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().expect("tempdir");
+    let root = tmp.path().join(".codex-hud");
+    std::fs::create_dir_all(&root).expect("create root");
+    let rc = tmp.path().join(".zshrc");
+    std::fs::write(
+        &rc,
+        "# BEGIN CODEX HUD MANAGED BLOCK\nexport PATH=\"/tmp\"\n# END CODEX HUD MANAGED BLOCK\n",
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&rc).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&rc, perms).unwrap();
+
+    let err = run_uninstall_with_rc(tmp.path(), &rc).expect_err("expected rc write error");
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&rc).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&rc, reset).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn reverse_patch_returns_error_when_target_is_not_writable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().expect("tempdir");
+    let target = tmp.path().join("codex");
+    std::fs::write(&target, "PATCHED-EXPECTED").expect("write fixture");
+    let mut perms = std::fs::metadata(&target).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&target, perms).unwrap();
+
+    let err = reverse_patch_if_exact_state(&target, "PATCHED-EXPECTED", "ORIGINAL-STOCK")
+        .expect_err("expected write failure");
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&target).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&target, reset).unwrap();
+}

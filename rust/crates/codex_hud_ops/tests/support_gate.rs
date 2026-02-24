@@ -96,3 +96,23 @@ fn load_manifest_surfaces_io_errors() {
     let err = load_manifest(&missing).unwrap_err();
     assert!(!err.is_empty());
 }
+
+#[test]
+fn load_manifest_surfaces_json_parse_errors() {
+    let tmp = tempdir().unwrap();
+    let file = tmp.path().join("compat.json");
+    std::fs::write(&file, "{").unwrap();
+
+    let err = load_manifest(&file).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn resolve_install_mode_surfaces_manifest_load_errors() {
+    let tmp = tempdir().unwrap();
+    let missing = tmp.path().join("missing-compat.json");
+    let pubkey = test_public_key_hex_for_tests();
+
+    let err = resolve_install_mode(&missing, "0.104.0+abc", &pubkey).unwrap_err();
+    assert!(!err.is_empty());
+}

@@ -30,3 +30,9 @@ fn unknown_statusline_command_is_rejected() {
     let err = parse_statusline_command("/not-a-command", []).unwrap_err();
     assert!(err.contains("unknown statusline command"));
 }
+
+#[test]
+fn statusline_command_rejects_args_after_valid_command_name() {
+    let err = parse_statusline_command("/statusline", ["preset", "full"]).unwrap_err();
+    assert!(err.contains("/statusline does not accept arguments in v1"));
+}

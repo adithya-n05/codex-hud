@@ -27,3 +27,26 @@ fn backup_file_restores_last_good_state() {
     let after = std::fs::read_to_string(&target).unwrap();
     assert_eq!(after, "good = true\n");
 }
+
+#[test]
+fn atomic_write_without_existing_file_is_successful() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+
+    atomic_write_with_backup(&target, "new = true\n", false).unwrap();
+
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "new = true\n");
+    assert!(!target.with_extension("toml.bak").exists());
+}
+
+#[test]
+fn atomic_write_with_existing_file_is_successful() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::write(&target, "old = true\n").unwrap();
+
+    atomic_write_with_backup(&target, "new = true\n", false).unwrap();
+
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "new = true\n");
+    assert!(target.with_extension("toml.bak").exists());
+}

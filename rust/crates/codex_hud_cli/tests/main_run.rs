@@ -290,3 +290,60 @@ console.log(env.PATH);
     assert!(policy.contains("mode=error"));
     assert!(policy.contains("reason=stock codex exited with 17"));
 }
+
+#[cfg(unix)]
+#[test]
+fn run_route_handles_second_probe_failure_after_ran_stock_outcome() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+
+    let stock = tmp.path().join("stock.sh");
+    let marker = tmp.path().join("first-version-ok.marker");
+    std::fs::write(
+        &stock,
+        format!(
+            "#!/usr/bin/env sh\nif [ \"$1\" = \"--version\" ]; then\n  if [ ! -f '{}' ]; then\n    touch '{}'\n    echo codex-cli 0.104.0\n    exit 0\n  fi\n  echo bad-version >&2\n  exit 1\nfi\necho passthrough:$*\n",
+            marker.to_string_lossy(),
+            marker.to_string_lossy()
+        ),
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&stock).unwrap().permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&stock, perms).unwrap();
+
+    let signature = sign_manifest_for_tests(r#"{"schema_version":1,"supported_keys":[]}"#);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":[],"signature_hex":"{}"}}"#,
+            signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let bin = env!("CARGO_BIN_EXE_codex_hud_cli");
+    let out = Command::new(bin)
+        .args([
+            "run",
+            "--stock-codex",
+            stock.to_str().unwrap(),
+            "--",
+            "--version",
+        ])
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(!stderr.contains("codex-hud is not yet compatible with"));
+}

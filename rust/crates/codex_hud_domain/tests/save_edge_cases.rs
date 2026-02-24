@@ -70,3 +70,64 @@ fn load_redaction_toggle_errors_when_file_is_missing() {
     let err = load_redaction_toggle(&dir.path().join("missing.toml")).unwrap_err();
     assert!(!err.is_empty());
 }
+
+#[test]
+fn atomic_write_with_backup_errors_when_target_is_directory() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::create_dir_all(&target).unwrap();
+
+    let err = atomic_write_with_backup(&target, "x = 1\n", false).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn atomic_write_with_backup_errors_when_temp_parent_is_missing() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("missing/config.toml");
+
+    let err = atomic_write_with_backup(&target, "x = 1\n", false).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn restore_from_backup_errors_when_backup_is_missing() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::write(&target, "current = true\n").unwrap();
+
+    let err = restore_from_backup(&target).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn save_redaction_toggle_errors_when_target_is_directory() {
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::create_dir_all(&target).unwrap();
+
+    let err = save_redaction_toggle(&target, true).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn atomic_save_simulated_failure_surfaces_restore_copy_error() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("config.toml");
+    std::fs::write(&target, "old = true\n").unwrap();
+
+    let mut perms = std::fs::metadata(&target).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&target, perms).unwrap();
+
+    let err = atomic_write_with_backup(&target, "new = true\n", true).unwrap_err();
+    assert!(!err.is_empty());
+    assert!(!err.contains("simulated write failure"));
+
+    let mut reset = std::fs::metadata(&target).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&target, reset).unwrap();
+}

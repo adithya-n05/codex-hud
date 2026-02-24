@@ -1229,6 +1229,693 @@ fn install_cached_binary_fails_when_vendor_binary_is_missing() {
 }
 
 #[test]
+fn passthrough_errors_when_binary_is_missing() {
+    let tmp = tempdir().unwrap();
+    let missing = tmp.path().join("missing-codex");
+    let err = run_stock_codex_passthrough(&missing, &[]).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_npm_layout_errors_when_patch_state_parent_is_blocked() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("bin/codex.js"),
+        r#"#!/usr/bin/env node
+const updatedPath = "x";
+const env = { ...process.env, PATH: updatedPath };
+"#,
+    )
+    .unwrap();
+    std::fs::write(root.join(".codex-hud"), "blocked").unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_non_npm_errors_when_backup_parent_is_blocked() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/chatwidget.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+    std::fs::write(root.join(".codex-hud"), "blocked").unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn install_auto_non_npm_errors_when_final_stock_pointer_target_is_directory() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let root = tmp.path().join("codex-rs");
+    let codex = root.join("bin/codex");
+    std::fs::create_dir_all(codex.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/chatwidget.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&codex), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/stock_codex_path.txt")).unwrap();
+
+    let err = install_native_patch_auto_with(&home, "", Some(&codex), None).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_cached_binary_errors_when_cached_binary_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"vendor").unwrap();
+
+    let cached = codex_hud_ops::native_install::patched_binary_cache_path_for_test(
+        &home,
+        "0.104.0+abc",
+    );
+    std::fs::create_dir_all(&cached).unwrap();
+
+    let err =
+        install_native_patch_using_cached_binary(&home, &launcher, "0.104.0+abc").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_cached_binary_errors_when_vendor_binary_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(&vendor_binary).unwrap();
+
+    let cached = codex_hud_ops::native_install::patched_binary_cache_path_for_test(
+        &home,
+        "0.104.0+abc",
+    );
+    std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+    std::fs::write(&cached, b"cached").unwrap();
+
+    let err =
+        install_native_patch_using_cached_binary(&home, &launcher, "0.104.0+abc").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_cached_binary_propagates_patch_state_write_error() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"same-bytes").unwrap();
+
+    let cached = codex_hud_ops::native_install::patched_binary_cache_path_for_test(
+        &home,
+        "0.104.0+abc",
+    );
+    std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+    std::fs::write(&cached, b"same-bytes").unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/cache/npm_patch_state.json")).unwrap();
+
+    let err =
+        install_native_patch_using_cached_binary(&home, &launcher, "0.104.0+abc").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn install_native_patch_npm_layout_errors_when_launcher_is_read_only() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    let launcher = root.join("bin/codex.js");
+    std::fs::write(
+        &launcher,
+        r#"#!/usr/bin/env node
+const updatedPath = "x";
+const env = { ...process.env, PATH: updatedPath };
+"#,
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&launcher).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&launcher, perms).unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&launcher).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&launcher, reset).unwrap();
+}
+
+#[test]
+fn install_native_patch_npm_layout_errors_when_state_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("bin/codex.js"),
+        r#"#!/usr/bin/env node
+const updatedPath = "x";
+const env = { ...process.env, PATH: updatedPath };
+"#,
+    )
+    .unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud/patch-state.json")).unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_non_npm_errors_when_target_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+    std::fs::create_dir_all(root.join("tui/src/chatwidget.rs")).unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_non_npm_errors_when_backup_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/chatwidget.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+    std::fs::create_dir_all(
+        root.join(".codex-hud/backups/codex-rs/tui/src/slash_command.bak"),
+    )
+    .unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_non_npm_errors_when_state_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    for rel in [
+        "tui/src/slash_command.rs",
+        "tui/src/chatwidget.rs",
+        "tui/src/app.rs",
+        "tui/src/bottom_pane/status_line_setup.rs",
+    ] {
+        let file = root.join(rel);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, "SlashCommand::Statusline").unwrap();
+    }
+    std::fs::create_dir_all(root.join(".codex-hud/patch-state.json")).unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn uninstall_native_patch_errors_when_state_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    std::fs::create_dir_all(root.join(".codex-hud/patch-state.json")).unwrap();
+
+    let err = uninstall_native_patch(&root).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn uninstall_native_patch_errors_when_backup_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    std::fs::create_dir_all(root.join("tui/src")).unwrap();
+    std::fs::write(root.join("tui/src/slash_command.rs"), "patched").unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud/backups/codex-rs/tui/src/slash_command.bak"))
+        .unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    std::fs::write(
+        root.join(".codex-hud/patch-state.json"),
+        r#"{"patched_rel_paths":["codex-rs/tui/src/slash_command.rs"]}"#,
+    )
+    .unwrap();
+
+    let err = uninstall_native_patch(&root).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn uninstall_native_patch_errors_when_restore_target_is_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    std::fs::create_dir_all(root.join("tui/src/slash_command.rs")).unwrap();
+    let backup = root.join(".codex-hud/backups/codex-rs/tui/src/slash_command.bak");
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, "original").unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    std::fs::write(
+        root.join(".codex-hud/patch-state.json"),
+        r#"{"patched_rel_paths":["codex-rs/tui/src/slash_command.rs"]}"#,
+    )
+    .unwrap();
+
+    let err = uninstall_native_patch(&root).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn uninstall_native_patch_errors_when_state_file_cannot_be_removed() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    std::fs::create_dir_all(root.join("tui/src")).unwrap();
+    std::fs::write(root.join("tui/src/slash_command.rs"), "patched").unwrap();
+    let backup = root.join(".codex-hud/backups/codex-rs/tui/src/slash_command.bak");
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, "original").unwrap();
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    let state_path = root.join(".codex-hud/patch-state.json");
+    std::fs::write(
+        &state_path,
+        r#"{"patched_rel_paths":["codex-rs/tui/src/slash_command.rs"]}"#,
+    )
+    .unwrap();
+
+    let hud_dir = root.join(".codex-hud");
+    let mut perms = std::fs::metadata(&hud_dir).unwrap().permissions();
+    perms.set_mode(0o555);
+    std::fs::set_permissions(&hud_dir, perms).unwrap();
+
+    let err = uninstall_native_patch(&root).unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&hud_dir).unwrap().permissions();
+    reset.set_mode(0o755);
+    std::fs::set_permissions(&hud_dir, reset).unwrap();
+}
+
+#[test]
+fn install_native_patch_errors_when_manifest_is_invalid() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(&manifest, "{").unwrap();
+
+    let err = install_native_patch(&root, "0.104.0+abc", &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_native_patch_npm_layout_errors_when_patch_marker_is_missing() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("npm-codex");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(root.join("bin/codex.js"), "#!/usr/bin/env node\nconsole.log('x');\n").unwrap();
+
+    let key = "0.104.0+abc";
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    let manifest = root.join(".codex-hud-compat.json");
+    std::fs::write(
+        &manifest,
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+
+    let err = install_native_patch(&root, key, &manifest, &test_public_key_hex_for_tests())
+        .unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn install_cached_binary_errors_when_stock_path_is_not_npm_layout() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let stock = tmp.path().join("stock-codex");
+    std::fs::write(&stock, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+
+    let err =
+        install_native_patch_using_cached_binary(&home, &stock, "0.104.0+abc").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn install_auto_state_match_propagates_vendor_read_errors() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &launcher,
+        "#!/usr/bin/env sh\nif [ \"$1\" = \"--version\" ]; then\n  echo codex-cli 0.104.0\n  exit 0\nfi\n# /* codex-hud-managed:start */\n# managed\n# /* codex-hud-managed:end */\necho \"$@\"\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&launcher).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&launcher, perms).unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(&vendor_binary).unwrap();
+
+    let cached = codex_hud_ops::native_install::patched_binary_cache_path_for_test(&home, &key);
+    std::fs::create_dir_all(cached.parent().unwrap()).unwrap();
+    std::fs::write(&cached, b"cached").unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/cache")).unwrap();
+    std::fs::write(
+        home.join(".codex-hud/cache/npm_patch_state.json"),
+        format!(
+            r#"{{"compatibility_key":"{key}","vendor_sha256":"v","cached_sha256":"c"}}"#
+        ),
+    )
+    .unwrap();
+
+    let err = install_native_patch_auto_with(&home, "", Some(&launcher), None).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn install_auto_state_match_propagates_cached_read_errors() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let npm_root = tmp.path().join("node_modules/@openai/codex");
+    let launcher = npm_root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        npm_root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &launcher,
+        "#!/usr/bin/env sh\nif [ \"$1\" = \"--version\" ]; then\n  echo codex-cli 0.104.0\n  exit 0\nfi\n# /* codex-hud-managed:start */\n# managed\n# /* codex-hud-managed:end */\necho \"$@\"\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&launcher).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&launcher, perms).unwrap();
+    }
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&launcher), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{key}"]}}"#);
+    let sig = sign_manifest_for_tests(&payload);
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(r#"{{"schema_version":1,"supported_keys":["{key}"],"signature_hex":"{sig}"}}"#),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let vendor_binary =
+        codex_hud_ops::codex_probe::resolve_npm_vendor_binary_path_from_package_root(&npm_root)
+            .unwrap();
+    std::fs::create_dir_all(vendor_binary.parent().unwrap()).unwrap();
+    std::fs::write(&vendor_binary, b"vendor-bytes").unwrap();
+    let vendor_sha = {
+        let mut hasher = Sha256::new();
+        hasher.update(std::fs::read(&vendor_binary).unwrap());
+        format!("{:x}", hasher.finalize())
+    };
+
+    let cached = codex_hud_ops::native_install::patched_binary_cache_path_for_test(&home, &key);
+    std::fs::create_dir_all(&cached).unwrap();
+    std::fs::create_dir_all(home.join(".codex-hud/cache")).unwrap();
+    std::fs::write(
+        home.join(".codex-hud/cache/npm_patch_state.json"),
+        format!(
+            r#"{{"compatibility_key":"{key}","vendor_sha256":"{vendor_sha}","cached_sha256":"c"}}"#
+        ),
+    )
+    .unwrap();
+
+    let err = install_native_patch_auto_with(&home, "", Some(&launcher), None).unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn uninstall_native_patch_errors_when_strip_restore_target_is_read_only() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("codex-rs");
+    let target = root.join("bin/codex.js");
+    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+    std::fs::write(
+        &target,
+        "x\n/* codex-hud-managed:start */\nmanaged\n/* codex-hud-managed:end */\n",
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&target).unwrap().permissions();
+    perms.set_mode(0o444);
+    std::fs::set_permissions(&target, perms).unwrap();
+
+    std::fs::create_dir_all(root.join(".codex-hud")).unwrap();
+    std::fs::write(
+        root.join(".codex-hud/patch-state.json"),
+        r#"{"patched_rel_paths":["bin/codex.js"]}"#,
+    )
+    .unwrap();
+
+    let err = uninstall_native_patch(&root).unwrap_err();
+    assert!(!err.is_empty());
+
+    let mut reset = std::fs::metadata(&target).unwrap().permissions();
+    reset.set_mode(0o644);
+    std::fs::set_permissions(&target, reset).unwrap();
+}
+
+#[test]
 fn install_auto_returns_stock_when_refresh_fails_and_bundle_is_missing() {
     let tmp = tempdir().unwrap();
     let home = tmp.path().join("home");
@@ -1689,4 +2376,124 @@ fn native_install_rolls_back_when_one_target_is_read_only() {
     assert!(!err.is_empty());
     let first = std::fs::read_to_string(root.join("tui/src/slash_command.rs")).unwrap();
     assert_eq!(first, "SlashCommand::Statusline");
+}
+
+#[cfg(not(windows))]
+#[test]
+fn install_auto_returns_bundle_unavailable_when_bundle_files_disappear_after_metadata_persist() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let source_root = tmp.path().join("source-root");
+
+    let mut deep = source_root.clone();
+    for i in 0..36 {
+        deep = deep.join(format!("d{i}"));
+    }
+    let codex = deep.join("bin/codex");
+    std::fs::create_dir_all(codex.parent().unwrap()).unwrap();
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    let slash = source_root.join("tui/src/slash_command.rs");
+    std::fs::create_dir_all(slash.parent().unwrap()).unwrap();
+    std::fs::write(&slash, "SlashCommand::Statusline").unwrap();
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&codex), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+            key, signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let home_for_remover = home.clone();
+    let remover = thread::spawn(move || {
+        let marker = home_for_remover.join(".codex-hud/compat/last_compat_key.txt");
+        for _ in 0..2_000_000 {
+            if marker.exists() {
+                let _ = std::fs::remove_file(home_for_remover.join(".codex-hud/compat/compat.json"));
+                let _ = std::fs::remove_file(home_for_remover.join(".codex-hud/compat/public_key.hex"));
+                return;
+            }
+            std::thread::yield_now();
+        }
+    });
+
+    let out = install_native_patch_auto_with(&home, "", Some(&codex), None).unwrap();
+    remover.join().unwrap();
+    assert_eq!(
+        out,
+        InstallOutcome::RanStock {
+            reason: "compatibility bundle unavailable".to_string(),
+        }
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn install_auto_returns_stock_when_native_patch_targets_are_missing_after_gate_accepts() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let source_root = tmp.path().join("codex-rs");
+    let codex = source_root.join("bin/codex");
+
+    std::fs::create_dir_all(codex.parent().unwrap()).unwrap();
+    std::fs::write(&codex, "#!/usr/bin/env sh\necho codex-cli 0.104.0\n").unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    let slash = source_root.join("tui/src/slash_command.rs");
+    std::fs::create_dir_all(slash.parent().unwrap()).unwrap();
+    std::fs::write(&slash, "SlashCommand::Statusline").unwrap();
+
+    let key = codex_hud_ops::codex_probe::probe_compatibility_key(Some(&codex), "").unwrap();
+    let payload = format!(r#"{{"schema_version":1,"supported_keys":["{}"]}}"#, key);
+    let signature = sign_manifest_for_tests(&payload);
+
+    std::fs::create_dir_all(home.join(".codex-hud/compat")).unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/compat.json"),
+        format!(
+            r#"{{"schema_version":1,"supported_keys":["{}"],"signature_hex":"{}"}}"#,
+            key, signature
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".codex-hud/compat/public_key.hex"),
+        test_public_key_hex_for_tests(),
+    )
+    .unwrap();
+
+    let out = install_native_patch_auto_with(&home, "", Some(&codex), None).unwrap();
+    assert_eq!(
+        out,
+        InstallOutcome::RanStock {
+            reason: "native patch substrate unavailable for installed codex layout".to_string(),
+        }
+    );
 }

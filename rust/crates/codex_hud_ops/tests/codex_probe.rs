@@ -272,6 +272,27 @@ fn file_sha256_ignores_managed_patch_with_crlf_tail_separator() {
 }
 
 #[test]
+fn file_sha256_ignores_managed_patch_with_lf_tail_separator() {
+    let tmp = tempdir().unwrap();
+    let base = tmp.path().join("base-codex");
+    let patched = tmp.path().join("patched-codex");
+    let body = "#!/usr/bin/env sh\necho codex-cli 0.104.0\n";
+
+    std::fs::write(&base, body).unwrap();
+    std::fs::write(
+        &patched,
+        format!(
+            "/* codex-hud-managed:start */\nset -e\n/* codex-hud-managed:end */\n{body}"
+        ),
+    )
+    .unwrap();
+
+    let base_sha = file_sha256_hex(&base).unwrap();
+    let patched_sha = file_sha256_hex(&patched).unwrap();
+    assert_eq!(base_sha, patched_sha);
+}
+
+#[test]
 fn parse_codex_version_line_rejects_empty_input() {
     assert_eq!(parse_codex_version_line(""), None);
 }
@@ -297,4 +318,98 @@ fn probe_compatibility_key_fails_when_version_output_is_unparseable() {
 
     let err = probe_compatibility_key(Some(&codex), "").unwrap_err();
     assert!(err.contains("unable to parse codex version"));
+}
+
+#[cfg(unix)]
+#[test]
+fn detect_npm_package_root_resolves_from_canonicalized_symlink_path() {
+    use std::os::unix::fs::symlink;
+
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("lib/node_modules/@openai/codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(
+        root.join("package.json"),
+        r#"{"name":"@openai/codex","version":"0.104.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let shim_dir = tmp.path().join("shim");
+    std::fs::create_dir_all(&shim_dir).unwrap();
+    let symlink_launcher = shim_dir.join("codex");
+    symlink(&launcher, &symlink_launcher).unwrap();
+
+    let detected = detect_npm_package_root_from_codex_binary(&symlink_launcher).unwrap();
+    let detected_real = std::fs::canonicalize(detected).unwrap();
+    let root_real = std::fs::canonicalize(root).unwrap();
+    assert_eq!(detected_real, root_real);
+}
+
+#[test]
+fn detect_npm_package_root_returns_none_for_invalid_package_json() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("lib/node_modules/@openai/codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(root.join("package.json"), "{invalid-json").unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let detected = detect_npm_package_root_from_codex_binary(&launcher);
+    assert!(detected.is_none());
+}
+
+#[test]
+fn detect_npm_package_root_returns_none_when_package_name_is_missing() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path().join("lib/node_modules/@openai/codex");
+    let launcher = root.join("bin/codex.js");
+    std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+    std::fs::write(root.join("package.json"), r#"{"version":"0.104.0"}"#).unwrap();
+    std::fs::write(&launcher, "#!/usr/bin/env node\n").unwrap();
+
+    let detected = detect_npm_package_root_from_codex_binary(&launcher);
+    assert!(detected.is_none());
+}
+
+#[test]
+fn probe_compatibility_key_fails_when_codex_path_is_directory() {
+    let tmp = tempdir().unwrap();
+    let codex_dir = tmp.path().join("codex-dir");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+
+    let err = probe_compatibility_key(Some(&codex_dir), "").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[test]
+fn probe_compatibility_key_fails_when_no_codex_candidate_exists() {
+    let tmp = tempdir().unwrap();
+    let missing = tmp.path().join("missing-codex");
+
+    let err = probe_compatibility_key(Some(&missing), "").unwrap_err();
+    assert!(!err.is_empty());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn probe_compatibility_key_fails_when_binary_disappears_after_version_check() {
+    let tmp = tempdir().unwrap();
+    let codex = tmp.path().join("codex");
+    std::fs::write(
+        &codex,
+        "#!/usr/bin/env sh\nif [ \"$1\" = \"--version\" ]; then\n  echo codex-cli 0.104.0\n  rm \"$0\"\n  exit 0\nfi\nexit 0\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&codex).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&codex, perms).unwrap();
+    }
+
+    let err = probe_compatibility_key(Some(&codex), "").unwrap_err();
+    assert!(!err.is_empty());
 }
