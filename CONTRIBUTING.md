@@ -86,6 +86,16 @@ cargo clippy --workspace --all-targets -- -D warnings
 - No secrets/tokens are committed (including in tests, logs, fixtures, or screenshots).
 - PR description clearly states what changed, why, and how it was validated.
 
+## Changelog Workflow
+
+Track user-facing changes in [CHANGELOG.md](CHANGELOG.md).
+
+- Add entries under `## [Unreleased]` as part of normal PR work.
+- Use one of the existing buckets: `Added`, `Changed`, `Fixed`, `Security`.
+- Keep entries short and user-focused (what changed and why it matters).
+- At release time, move `Unreleased` entries into a versioned section using `## [x.y.z] - YYYY-MM-DD`.
+- Start a fresh `## [Unreleased]` section immediately after cutting the release.
+
 ## Security and Privacy Expectations
 
 - Never include raw API keys, bearer tokens, or credentials in code, docs, or issue text.
