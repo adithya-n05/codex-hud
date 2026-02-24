@@ -59,6 +59,60 @@ status_line = [
 }
 
 #[test]
+fn migrates_legacy_long_hud_default_to_compact_two_line_default() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let codex_dir = home.join(".codex");
+    std::fs::create_dir_all(&codex_dir).unwrap();
+    std::fs::write(
+        codex_dir.join("config.toml"),
+        r#"
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "git-branch",
+  "permission-mode",
+  "auth-chip",
+  "tool-calls",
+  "ctx-bar",
+  "five-hour-bar",
+  "weekly-bar",
+  "context-remaining",
+  "context-used",
+  "five-hour-limit",
+  "weekly-limit",
+  "current-dir",
+  "project-root",
+  "codex-version",
+  "context-window-size",
+  "used-tokens",
+  "total-input-tokens",
+  "total-output-tokens",
+  "session-id",
+  "model-name",
+]
+"#,
+    )
+    .unwrap();
+
+    let changed = ensure_hud_statusline_config(&home).unwrap();
+    assert!(changed);
+
+    let updated = std::fs::read_to_string(codex_dir.join("config.toml")).unwrap();
+    assert!(updated.contains("\"model-with-reasoning\""));
+    assert!(updated.contains("\"git-branch\""));
+    assert!(updated.contains("\"permission-mode\""));
+    assert!(updated.contains("\"auth-chip\""));
+    assert!(updated.contains("\"tool-calls\""));
+    assert!(updated.contains("\"ctx-bar\""));
+    assert!(updated.contains("\"five-hour-bar\""));
+    assert!(updated.contains("\"weekly-bar\""));
+    assert!(!updated.contains("\"context-remaining\""));
+    assert!(!updated.contains("\"context-used\""));
+    assert!(!updated.contains("\"session-id\""));
+}
+
+#[test]
 fn creates_statusline_config_when_config_file_missing() {
     let tmp = tempdir().unwrap();
     let home = tmp.path().join("home");
@@ -75,4 +129,6 @@ fn creates_statusline_config_when_config_file_missing() {
     assert!(created.contains("\"ctx-bar\""));
     assert!(created.contains("\"five-hour-bar\""));
     assert!(created.contains("\"weekly-bar\""));
+    assert!(!created.contains("\"context-remaining\""));
+    assert!(!created.contains("\"context-used\""));
 }

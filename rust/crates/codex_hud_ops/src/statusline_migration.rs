@@ -9,6 +9,17 @@ const HUD_ITEMS: &[&str] = &[
     "ctx-bar",
     "five-hour-bar",
     "weekly-bar",
+];
+
+const LEGACY_HUD_ITEMS: &[&str] = &[
+    "model-with-reasoning",
+    "git-branch",
+    "permission-mode",
+    "auth-chip",
+    "tool-calls",
+    "ctx-bar",
+    "five-hour-bar",
+    "weekly-bar",
     "context-remaining",
     "context-used",
     "five-hour-limit",
@@ -51,6 +62,16 @@ fn has_hud_signal(array: &[toml::Value]) -> bool {
     })
 }
 
+fn array_matches_exact_items(array: &[toml::Value], expected: &[&str]) -> bool {
+    if array.len() != expected.len() {
+        return false;
+    }
+    array
+        .iter()
+        .zip(expected.iter())
+        .all(|(value, expected_item)| value.as_str() == Some(*expected_item))
+}
+
 pub fn ensure_hud_statusline_config(home: &Path) -> Result<bool, String> {
     let config_path = home.join(".codex/config.toml");
     if let Some(parent) = config_path.parent() {
@@ -85,6 +106,12 @@ pub fn ensure_hud_statusline_config(home: &Path) -> Result<bool, String> {
 
     if let Some(existing) = tui_table.get("status_line").and_then(|v| v.as_array()) {
         if has_hud_signal(existing) {
+            if array_matches_exact_items(existing, LEGACY_HUD_ITEMS) {
+                tui_table.insert("status_line".to_string(), hud_items_value());
+                let out = toml::to_string_pretty(&root).map_err(|e| e.to_string())?;
+                std::fs::write(&config_path, out).map_err(|e| e.to_string())?;
+                return Ok(true);
+            }
             return Ok(false);
         }
     }
