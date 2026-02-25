@@ -31,6 +31,36 @@ test('postinstall installs packaged runtime and compat assets without cargo fall
   assert.ok(fs.existsSync(path.join(home, '.codex-hud', 'compat', 'public_key.hex')));
 });
 
+test('postinstall ad-hoc signs darwin runtime after copy', () => {
+  const pkg = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-pkg-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-home-'));
+  const runtimeDir = path.join(pkg, 'dist', 'runtime', 'darwin-arm64');
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  fs.writeFileSync(path.join(runtimeDir, 'codex_hud_cli'), '#!/usr/bin/env sh\nexit 0\n', { mode: 0o755 });
+
+  const compatDir = path.join(pkg, 'assets', 'compat');
+  fs.mkdirSync(compatDir, { recursive: true });
+  fs.writeFileSync(path.join(compatDir, 'compat.json'), '{"schema_version":1,"supported_keys":[],"signature_hex":"00"}');
+  fs.writeFileSync(path.join(compatDir, 'public_key.hex'), '00');
+
+  const calls = [];
+  runPostinstallForHome(pkg, home, 'darwin', 'arm64', {
+    runCommand: (command, args) => {
+      calls.push({ command, args });
+      return { status: 0 };
+    },
+  });
+
+  const installedEntry = path.join(home, '.codex-hud', 'bin', 'codex-hud');
+  assert.ok(fs.existsSync(installedEntry));
+  assert.deepEqual(calls, [
+    {
+      command: 'codesign',
+      args: ['--force', '--sign', '-', installedEntry],
+    },
+  ]);
+});
+
 test('postinstall installs packaged runtime and cmd shim on windows', () => {
   const pkg = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-pkg-'));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-home-'));

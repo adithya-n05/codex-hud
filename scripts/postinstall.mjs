@@ -67,6 +67,15 @@ function writeWindowsDevFallback(cmdPath, packageRoot) {
   writeFileSync(cmdPath, shim);
 }
 
+function adHocCodesignRuntime(runtimePath, runCommand = spawnSync) {
+  const result = runCommand('codesign', ['--force', '--sign', '-', runtimePath], {
+    stdio: 'ignore',
+  });
+  if (result.status !== 0) {
+    throw new Error(`codesign failed for ${runtimePath}`);
+  }
+}
+
 function installCompatAssets(packageRoot, homeDir) {
   const compatDir = join(homeDir, '.codex-hud', 'compat');
   mkdirSync(compatDir, { recursive: true });
@@ -122,9 +131,13 @@ export function runPostinstallForHome(
     }
   } else {
     const runtimePath = join(runtimeDir, 'codex-hud');
+    const runCommand = options.runCommand ?? spawnSync;
     if (runtimeCandidate) {
       copyFileSync(runtimeCandidate, runtimePath);
       chmodSync(runtimePath, 0o755);
+      if (platform === 'darwin') {
+        adHocCodesignRuntime(runtimePath, runCommand);
+      }
     } else {
       writeUnixDevFallback(runtimePath, packageRoot);
     }
