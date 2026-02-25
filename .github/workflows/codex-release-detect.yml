@@ -42,7 +42,7 @@ jobs:
     if: needs.detect.outputs.has_updates == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         env:
           NEW_VERSIONS: ${{ needs.detect.outputs.new_versions }}
         with:
@@ -70,7 +70,7 @@ jobs:
     if: needs.detect.outputs.has_updates == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         env:
           NEW_VERSIONS: ${{ needs.detect.outputs.new_versions }}
         with:
